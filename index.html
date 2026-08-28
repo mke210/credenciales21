@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Credenciales Escolares | v6.3</title>
+    <title>Credenciales Escolares | v6.4</title>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -105,9 +105,10 @@
             <div class="hdr-title">Sistema de Credenciales Escolares</div>
             <div class="hdr-sub" id="hdrSub">Configura tu escuela en Configuración</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
             <span class="fb-dot on" id="fbDot"></span>
-            <div class="hdr-pill" id="hdrPill">v6.3</div>
+            <div class="hdr-pill" id="hdrPill">v6.4</div>
+            <span style="font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;">Powered by <strong style="color:rgba(255,255,255,.65);font-weight:700;">ElProfeChan</strong></span>
         </div>
     </header>
     <nav id="sidebar">
@@ -118,7 +119,7 @@
             <div class="nav-item" data-page="generate"><div class="ni-icon">🖨️</div><span>Generar</span></div>
         </div>
         <div class="sb-section"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
-        <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v6.3</div></div>
+        <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v6.4</div></div>
     </nav>
     <main id="main">
         <section class="page active" id="page-students">
@@ -151,6 +152,21 @@
             </div>
             <!-- Formulario -->
             <div style="padding:24px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+                    <div style="width:4px;height:20px;background:var(--gold);border-radius:2px;"></div>
+                    <h3 style="font-size:0.9em;font-weight:700;color:var(--navy);margin:0;">📷 FOTOGRAFÍA</h3>
+                </div>
+                <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;">
+                    <div id="fotoPreviewWrap" style="width:80px;height:100px;border:2.5px solid var(--border-dk);border-radius:10px;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <span id="fotoPlaceholder" style="font-size:34px;color:#cbd5e1;">👤</span>
+                        <img id="fotoPreviewImg" style="display:none;width:100%;height:100%;object-fit:cover;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">
+                        <button type="button" class="btn btn-navy btn-sm" onclick="openCamera()">📷 Tomar foto</button>
+                        <button type="button" class="btn btn-out btn-sm" onclick="document.getElementById('fotoFileInput').click()">📤 Subir foto</button>
+                        <button type="button" class="btn btn-err btn-sm" id="fotoRemoveBtn" style="display:none;" onclick="removeFoto()">🗑️ Eliminar</button>
+                    </div>
+                </div>
                 <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
                     <div style="width:4px;height:20px;background:var(--navy);border-radius:2px;"></div>
                     <h3 style="font-size:0.9em;font-weight:700;color:var(--navy);margin:0;">📋 DATOS PERSONALES</h3>
@@ -201,7 +217,32 @@
 <div id="toasts"></div>
 <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoFile(this)">
 <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="handleBgFile(this)">
+<input type="file" id="fotoFileInput" accept="image/*" style="display:none" onchange="handleFotoFile(this)">
 <input type="file" id="importInput" accept=".json" style="display:none" onchange="handleImportFile(this)">
+
+<!-- MODAL CÁMARA -->
+<div class="m-overlay" id="cameraOverlay" onclick="closeCameraOutside(event)">
+    <div class="modal" style="max-width:420px;">
+        <div class="m-hdr">
+            <span style="font-weight:700;">📷 Tomar fotografía</span>
+            <button class="m-close" onclick="closeCamera()">✕</button>
+        </div>
+        <div style="padding:20px;text-align:center;">
+            <div style="position:relative;width:100%;max-width:320px;margin:0 auto;border-radius:12px;overflow:hidden;background:#0f172a;aspect-ratio:3/4;">
+                <video id="cameraVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+                <canvas id="cameraCanvas" style="display:none;"></canvas>
+                <img id="cameraCapturedImg" style="width:100%;height:100%;object-fit:cover;display:none;">
+            </div>
+            <div id="cameraError" style="color:var(--err);font-size:12px;margin-top:12px;display:none;"></div>
+            <div style="display:flex;gap:10px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+                <button class="btn btn-out btn-sm" id="cameraSwitchBtn" style="display:none;" onclick="switchCamera()">🔄 Cambiar cámara</button>
+                <button class="btn btn-navy" id="cameraCaptureBtn" onclick="captureCameraPhoto()">📸 Capturar</button>
+                <button class="btn btn-out" id="cameraRetakeBtn" style="display:none;" onclick="retakeCameraPhoto()">↩️ Repetir</button>
+                <button class="btn btn-gold" id="cameraUseBtn" style="display:none;" onclick="useCameraPhoto()">✅ Usar foto</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <script>
 const firebaseConfig = {
@@ -243,7 +284,7 @@ const S = {
         directorInfo: { fontFamily:'Arial', fontSize:8, color:'#475569', align:'center' },
         directorAddr: { fontFamily:'Arial', fontSize:7, color:'#64748b', align:'center' },
         margins: { front:{top:0,bottom:0,left:0,right:0}, back:{top:0,bottom:0,left:0,right:0} },
-        bgOpacity:35, bgFit:'cover'
+        bgOpacity:35, bgFit:'cover', signatureSpace:0
     },
     editId:null, editingElement:'schoolName', marginSide:'front', activeTab:'logobg'
 };
@@ -253,7 +294,7 @@ function load(){
     db.ref('configuracion/credenciales').once('value').then(snap => { const data=snap.val(); if(data&&data.nombre)S.config=data; else { try{const c=JSON.parse(localStorage.getItem('cred_cfg'));if(c)S.config=c}catch(e){} } updateHeader(); });
     db.ref('configuracion/credenciales/logo').once('value').then(snap => { if(snap.val())S.logo=snap.val(); else try{S.logo=localStorage.getItem('cred_logo')||''}catch(e){} });
     db.ref('configuracion/credenciales/bgImage').once('value').then(snap => { if(snap.val())S.bgImage=snap.val(); else try{S.bgImage=localStorage.getItem('cred_bg')||''}catch(e){} });
-    db.ref('configuracion/credenciales/designStyles').once('value').then(snap => { if(snap.val())S.designStyles=snap.val(); else try{const ds=JSON.parse(localStorage.getItem('cred_ds'));if(ds)S.designStyles=ds}catch(e){} if(!S.designStyles.margins)S.designStyles.margins={front:{top:0,bottom:0,left:0,right:0},back:{top:0,bottom:0,left:0,right:0}}; });
+    db.ref('configuracion/credenciales/designStyles').once('value').then(snap => { if(snap.val())S.designStyles=snap.val(); else try{const ds=JSON.parse(localStorage.getItem('cred_ds'));if(ds)S.designStyles=ds}catch(e){} if(!S.designStyles.margins)S.designStyles.margins={front:{top:0,bottom:0,left:0,right:0},back:{top:0,bottom:0,left:0,right:0}}; if(S.designStyles.signatureSpace===undefined)S.designStyles.signatureSpace=0; });
     db.ref('alumnos').on('value', snap => { const data=snap.val(); if(data){S.students=Object.values(data);renderStudents();} });
 }
 
@@ -271,7 +312,7 @@ function nav(pg){
 }
 document.querySelectorAll('.nav-item').forEach(el=>el.addEventListener('click',()=>nav(el.dataset.page)));
 
-function getFrame(w,h,hasBg){ const barH=Math.round(h/20); return `${hasBg?'':`<rect width="${w}" height="${h}" fill="white"/>`}<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" fill="none" stroke="${N}" stroke-width="1.5" rx="6"/><rect x="0" y="${h-barH}" width="${w}" height="${barH}" fill="${N}" rx="0 0 6 6"/>`; }
+function getFrame(w,h,hasBg){ return `${hasBg?'':`<rect width="${w}" height="${h}" fill="white"/>`}<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" fill="none" stroke="${N}" stroke-width="1.5" rx="6"/>`; }
 
 function credCard(st,cfg,logo,bg,w,h,side){
     const hasBg=!!bg, ds=S.designStyles;
@@ -284,12 +325,13 @@ function credCard(st,cfg,logo,bg,w,h,side){
     const logoEl=logo?`<img src="${logo}" style="width:${fs(36)}px;height:${fs(36)}px;border-radius:50%;object-fit:contain;border:2px solid ${N};background:white;padding:2px">`:`<div style="width:${fs(36)}px;height:${fs(36)}px;border-radius:50%;background:${N};display:flex;align-items:center;justify-content:center;color:white;font-size:${fs(8)}px;font-weight:800">${(cfg.clave||'ESC').slice(0,3).toUpperCase()}</div>`;
     const bgTag=hasBg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:'';
     const studentId=st?.matricula||st?.id||'—';
+    const photoBox=st?.foto?`<div style="width:${fs(80)}px;height:${fs(100)}px;border:3px solid ${N};border-radius:${fs(6)}px;flex-shrink:0;overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`:`<div style="width:${fs(80)}px;height:${fs(100)}px;border:3px solid ${N};background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:${fs(6)}px;flex-shrink:0;"><span style="font-size:${fs(36)}px;color:#cbd5e1;">👤</span></div>`;
     const front=`
         <div style="display:flex;align-items:center;gap:${fs(6)}px;margin-bottom:${fs(4)}px;padding-bottom:${fs(3)}px;border-bottom:2px solid ${G};">
             ${logoEl}<div style="flex:1;text-align:center;"><div style="${stl(ds.schoolName)}">${escH(cfg.nombre)||'NOMBRE DE LA ESCUELA'}</div><div style="${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'} | ${escH(cfg.ciclo)||'Ciclo Escolar'}</div></div>
         </div>
         <div style="display:flex;align-items:center;gap:${fs(8)}px;margin:${fs(4)}px 0;">
-            <div style="width:${fs(80)}px;height:${fs(100)}px;border:3px solid ${N};background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:${fs(6)}px;flex-shrink:0;"><span style="font-size:${fs(36)}px;color:#cbd5e1;">👤</span></div>
+            ${photoBox}
             <div style="display:flex;flex-direction:column;align-items:center;gap:${fs(3)}px;flex-shrink:0;">
                 <div id="qr-${st?.id||'preview'}" style="width:${fs(60)}px;height:${fs(60)}px;border:2px solid ${N};border-radius:${fs(4)}px;display:flex;align-items:center;justify-content:center;background:white;"></div>
                 <div style="font-size:${fs(6)}px;font-weight:800;color:${N};background:${G}20;padding:${fs(2)}px ${fs(5)}px;border-radius:${fs(2)}px;">ID: ${studentId}</div>
@@ -298,8 +340,7 @@ function credCard(st,cfg,logo,bg,w,h,side){
         <div style="${stl(ds.studentName)} margin:${fs(4)}px 0;text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:${fs(3)}px;margin-top:${fs(3)}px;padding-top:${fs(3)}px;border-top:1.5px solid #e2e8f0;">
             ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N};padding:${fs(2)}px ${fs(4)}px;"><div style="${stl(ds.dataLabel)} text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)}">${v}</div></div>`).join('')}
-        </div>
-        <div style="margin-top:${fs(3)}px;text-align:center;font-size:${fs(5.5)}px;color:${N};"><strong>Responsable:</strong> ${escH(st?.tutor||'—')}</div>`;
+        </div>`;
     const back=`
         <div style="background:${N};color:white;text-align:center;font-weight:800;text-transform:uppercase;padding:${fs(5)}px;border-radius:${fs(4)}px;margin-bottom:${fs(8)}px;font-size:${fs(ds.backTitle.fontSize||9)}px;">Información de Contacto</div>
         <div style="flex:1;display:flex;flex-direction:column;gap:${fs(6)}px;">
@@ -311,7 +352,7 @@ function credCard(st,cfg,logo,bg,w,h,side){
             </div>
             <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Alergias</div><div style="${stl(ds.backField)}">${escH(st?.alergias)||'Ninguna'}</div></div>
         </div>
-        <div style="border-top:2px solid ${G};padding-top:${fs(5)}px;text-align:center;">
+        <div style="border-top:2px solid ${G};padding-top:${fs(5)}px;margin-top:${fs(ds.signatureSpace||0)}px;text-align:center;">
             <div style="${stl(ds.directorName)}">${escH(cfg.director)||'Director'}</div><div style="${stl(ds.directorInfo)} margin:${fs(2)}px 0;">${escH(cfg.cargo)||'Director(a)'}</div><div style="${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
         </div>`;
     return `<div style="position:relative;width:${w}px;height:${h}px;border-radius:6px;overflow:hidden;">${bgTag}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute;top:${tp}px;left:${lp}px;width:${cw}px;height:${ch}px;z-index:2;display:flex;flex-direction:column;">${side==='front'?front:back}</div></div>`;
@@ -326,6 +367,8 @@ function setAlignment(a){updateStyle('align',a);}
 function changeMarginSide(side){S.marginSide=side;renderDesign();}
 function adjustMargin(side,delta){const t=S.marginSide==='front'?S.designStyles.margins.front:S.designStyles.margins.back;let n=(t[side]||0)+delta;if(n<0)n=0;if(n>20)n=20;t[side]=n;saveDS();refreshPreview();renderDesign();}
 function updateMarginFromInput(side,val){const t=S.marginSide==='front'?S.designStyles.margins.front:S.designStyles.margins.back;let n=parseInt(val);if(isNaN(n))n=0;if(n<0)n=0;if(n>20)n=20;t[side]=n;saveDS();refreshPreview();}
+function adjustSignatureSpace(delta){let n=(S.designStyles.signatureSpace||0)+delta;if(n<0)n=0;if(n>30)n=30;S.designStyles.signatureSpace=n;saveDS();refreshPreview();renderDesign();}
+function updateSignatureSpaceFromInput(val){let n=parseInt(val);if(isNaN(n))n=0;if(n<0)n=0;if(n>30)n=30;S.designStyles.signatureSpace=n;saveDS();refreshPreview();}
 function updateBgOpacity(val){S.designStyles.bgOpacity=parseInt(val);saveDS();const lbl=document.getElementById('bgOpacityVal');if(lbl)lbl.textContent=val+'%';refreshPreview();}
 function updateBgFit(val){S.designStyles.bgFit=val;saveDS();refreshPreview();}
 
@@ -335,7 +378,7 @@ function renderDesign(){
     const tabHTML={
         logobg:`<div style="display:flex;gap:20px;flex-wrap:wrap;"><div class="card" style="flex:1;min-width:200px;"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Logo</div></div><div style="display:flex;align-items:center;gap:12px;">${S.logo?`<img class="logo-preview-sm" src="${S.logo}">`:'<div class="logo-preview-sm" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:#94a3b8;">🏫</div>'}<div><button class="btn btn-navy btn-sm" onclick="document.getElementById('logoInput').click()">${S.logo?'Cambiar':'Subir'}</button>${S.logo?'<button class="btn btn-err btn-sm" onclick="removeLogo()">Eliminar</button>':''}</div></div></div><div class="card" style="flex:2;min-width:320px;"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Diseño de fondo</div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px;margin-bottom:14px;">${DESIGN_PRESETS.map(p=>{const sel=S.bgImage===p.img;return `<div onclick="selectPresetBg('${p.id}')" style="cursor:pointer;text-align:center;" title="${p.name}"><div style="width:100%;aspect-ratio:2/3;border-radius:8px;overflow:hidden;border:2.5px solid ${sel?'var(--gold)':'var(--border)'};${sel?'box-shadow:0 0 0 2px rgba(196,146,42,.35);':''}"><img src="${p.img}" style="width:100%;height:100%;object-fit:cover;display:block;"></div><div style="font-size:9.5px;color:${sel?'var(--navy)':'var(--text-2)'};margin-top:4px;font-weight:${sel?'700':'600'};">${sel?'✓ ':''}${p.name}</div></div>`;}).join('')}${S.bgImage&&!DESIGN_PRESETS.some(p=>p.img===S.bgImage)?`<div style="text-align:center;" title="Tu diseño"><div style="width:100%;aspect-ratio:2/3;border-radius:8px;overflow:hidden;border:2.5px solid var(--gold);box-shadow:0 0 0 2px rgba(196,146,42,.35);"><img src="${S.bgImage}" style="width:100%;height:100%;object-fit:cover;display:block;"></div><div style="font-size:9.5px;color:var(--navy);margin-top:4px;font-weight:700;">✓ Tu diseño</div></div>`:''}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><button class="btn btn-navy btn-sm" onclick="document.getElementById('bgInput').click()">📤 Subir otro diseño</button>${S.bgImage?'<button class="btn btn-err btn-sm" onclick="removeBg()">Quitar fondo</button>':''}</div><div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div><div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div></div></div>`,
         style:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Estilos</div></div><select onchange="changeEditingElement(this.value)" style="width:100%;margin-bottom:12px;">${Object.entries(names).map(([k,v])=>`<option value="${k}" ${S.editingElement===k?'selected':''}>${v}</option>`).join('')}</select><div class="inline-style-bar"><label>Fuente</label><select onchange="updateStyle('fontFamily',this.value)"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select><label>Tamaño</label><input type="number" value="${cur.fontSize||12}" min="6" max="30" style="width:55px;" onchange="updateStyle('fontSize',parseInt(this.value))"><label>Color</label><input type="color" value="${cur.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)"><label><input type="checkbox" ${cur.bold?'checked':''} onchange="updateStyle('bold',this.checked)"> Negrita</label><label>Alin.</label><div class="align-btns">${['left','center','right','justify'].map(a=>`<button class="${cur.align===a?'active':''}" onclick="setAlignment('${a}')">${a[0].toUpperCase()}</button>`).join('')}</div></div></div>`,
-        margins:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Márgenes</div></div><div class="margin-side-switch"><div class="margin-side-btn ${S.marginSide==='front'?'active':''}" onclick="changeMarginSide('front')">Frente</div><div class="margin-side-btn ${S.marginSide==='back'?'active':''}" onclick="changeMarginSide('back')">Reverso</div></div>${['top','bottom','left','right'].map(side=>`<div class="margin-control"><label>${side==='top'?'Superior':side==='bottom'?'Inferior':side==='left'?'Izquierdo':'Derecho'}</label><button class="margin-btn" onclick="adjustMargin('${side}',-1)">−</button><input type="number" value="${m[side]||0}" min="0" max="20" onchange="updateMarginFromInput('${side}',this.value)"><button class="margin-btn" onclick="adjustMargin('${side}',1)">+</button></div>`).join('')}</div>`
+        margins:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Márgenes</div></div><div class="margin-side-switch"><div class="margin-side-btn ${S.marginSide==='front'?'active':''}" onclick="changeMarginSide('front')">Frente</div><div class="margin-side-btn ${S.marginSide==='back'?'active':''}" onclick="changeMarginSide('back')">Reverso</div></div>${['top','bottom','left','right'].map(side=>`<div class="margin-control"><label>${side==='top'?'Superior':side==='bottom'?'Inferior':side==='left'?'Izquierdo':'Derecho'}</label><button class="margin-btn" onclick="adjustMargin('${side}',-1)">−</button><input type="number" value="${m[side]||0}" min="0" max="20" onchange="updateMarginFromInput('${side}',this.value)"><button class="margin-btn" onclick="adjustMargin('${side}',1)">+</button></div>`).join('')}</div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Espacio para firma (Reverso)</div></div><div class="margin-control"><label>Firma</label><button class="margin-btn" onclick="adjustSignatureSpace(-1)">−</button><input type="number" value="${ds.signatureSpace||0}" min="0" max="30" onchange="updateSignatureSpaceFromInput(this.value)"><button class="margin-btn" onclick="adjustSignatureSpace(1)">+</button></div><div style="font-size:11px;color:var(--text-2);margin-top:6px;">Aumenta este valor para dejar más espacio en blanco arriba de la línea dorada, el nombre del director y su cargo, y así poder colocar la firma a mano en el reverso impreso.</div></div>`
     };
     document.getElementById('designPage').innerHTML=`<div class="pg-hdr"><div><div class="pg-ttl">Diseño</div></div></div><div class="design-tabs"><div class="design-tab ${S.activeTab==='logobg'?'active':''}" onclick="switchTab('logobg')">Logo y fondo</div><div class="design-tab ${S.activeTab==='style'?'active':''}" onclick="switchTab('style')">Estilos</div><div class="design-tab ${S.activeTab==='margins'?'active':''}" onclick="switchTab('margins')">Márgenes</div></div><div id="tabContent">${tabHTML[S.activeTab]}</div><div class="editor-preview-area"><div><div class="cred-side-lbl">FRENTE</div><div class="design-preview-container" id="frontPrev"></div></div><div><div class="cred-side-lbl">REVERSO</div><div class="design-preview-container" id="backPrev"></div></div></div>`;
     refreshPreview();
@@ -361,6 +404,7 @@ function openModal(id){
     const idField=document.getElementById('f-id'), idHint=document.getElementById('f-id-hint');
     if(id){idField.value=s.matricula||s.id;idField.readOnly=false;idField.style.background='var(--white)';idHint.textContent='Puedes editar el ID/matrícula (debe ser único).';}
     else{idField.value=computeNextId();idField.readOnly=true;idField.style.background='#F1F5F9';idHint.textContent='Asignado automáticamente al guardar.';}
+    if(s.foto)setFotoPreview(s.foto);else removeFoto();
     document.getElementById('f-nombre').value=s.nombre||''; document.getElementById('f-grado').value=s.grado||'';
     document.getElementById('f-grupo').value=s.grupo||''; document.getElementById('f-turno').value=s.turno||'Matutino';
     document.getElementById('f-vigencia').value=s.vigencia||''; document.getElementById('f-domicilio').value=s.domicilio||'';
@@ -368,7 +412,7 @@ function openModal(id){
     document.getElementById('f-sangre').value=s.tipoSangre||''; document.getElementById('f-alergias').value=s.alergias||'';
     document.getElementById('modalOverlay').classList.add('open');
 }
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.getElementById('modalIdPreview').textContent='';}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');document.getElementById('modalIdPreview').textContent='';closeCamera();}
 function closeModalOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 
 function computeNextId(){
@@ -392,7 +436,7 @@ function saveStudent(){
         newId=parseInt(idRaw,10);
         if(isNaN(newId))newId=computeNextId();
     }
-    const data={id:newId,matricula:String(newId),nombre:n,grado:document.getElementById('f-grado').value.trim(),grupo:document.getElementById('f-grupo').value.trim().toUpperCase(),turno:document.getElementById('f-turno').value,vigencia:document.getElementById('f-vigencia').value.trim(),domicilio:document.getElementById('f-domicilio').value.trim(),tutor:document.getElementById('f-tutor').value.trim(),telefono:document.getElementById('f-telefono').value.trim(),tipoSangre:document.getElementById('f-sangre').value,alergias:document.getElementById('f-alergias').value.trim()};
+    const data={id:newId,matricula:String(newId),nombre:n,grado:document.getElementById('f-grado').value.trim(),grupo:document.getElementById('f-grupo').value.trim().toUpperCase(),turno:document.getElementById('f-turno').value,vigencia:document.getElementById('f-vigencia').value.trim(),domicilio:document.getElementById('f-domicilio').value.trim(),tutor:document.getElementById('f-tutor').value.trim(),telefono:document.getElementById('f-telefono').value.trim(),tipoSangre:document.getElementById('f-sangre').value,alergias:document.getElementById('f-alergias').value.trim(),foto:window._currentFoto||''};
     if(S.editId)S.students=S.students.map(s=>s.id===S.editId?{...s,...data}:s);
     else S.students.push(data);
     saveSt();closeModal();renderStudents();toast(`Alumno guardado con ID: ${newId}`);
@@ -412,6 +456,99 @@ function handleBgFile(inp){const f=inp.files[0];if(!f)return;if(!f.type.startsWi
 function removeBg(){S.bgImage='';db.ref('configuracion/credenciales/bgImage').remove();localStorage.removeItem('cred_bg');renderDesign();}
 function selectPresetBg(id){const p=DESIGN_PRESETS.find(p=>p.id===id);if(!p)return;S.bgImage=p.img;db.ref('configuracion/credenciales/bgImage').set(S.bgImage);localStorage.setItem('cred_bg',S.bgImage);renderDesign();toast(`Diseño "${p.name}" aplicado`);}
 
+/* ===== FOTOGRAFÍA DEL ALUMNO (subir o tomar con cámara) ===== */
+function setFotoPreview(dataUrl){
+    window._currentFoto=dataUrl;
+    document.getElementById('fotoPreviewImg').src=dataUrl;
+    document.getElementById('fotoPreviewImg').style.display='block';
+    document.getElementById('fotoPlaceholder').style.display='none';
+    document.getElementById('fotoRemoveBtn').style.display='';
+}
+function removeFoto(){
+    window._currentFoto='';
+    document.getElementById('fotoPreviewImg').style.display='none';
+    document.getElementById('fotoPlaceholder').style.display='flex';
+    document.getElementById('fotoRemoveBtn').style.display='none';
+}
+function handleFotoFile(inp){
+    const f=inp.files[0];if(!f)return;
+    if(!f.type.startsWith('image/')){toast('Solo imágenes','err');return;}
+    const r=new FileReader();
+    r.onload=ev=>{
+        const img=new Image();
+        img.onload=()=>{
+            const maxW=480,scale=Math.min(1,maxW/img.width);
+            const c=document.createElement('canvas');
+            c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);
+            c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+            setFotoPreview(c.toDataURL('image/jpeg',0.85));
+        };
+        img.onerror=()=>toast('No se pudo leer la imagen','err');
+        img.src=ev.target.result;
+    };
+    r.readAsDataURL(f);inp.value='';
+}
+let cameraStream=null, cameraFacing='environment', cameraDevices=[];
+function openCamera(){
+    document.getElementById('cameraOverlay').classList.add('open');
+    document.getElementById('cameraCaptureBtn').style.display='';
+    document.getElementById('cameraRetakeBtn').style.display='none';
+    document.getElementById('cameraUseBtn').style.display='none';
+    document.getElementById('cameraCapturedImg').style.display='none';
+    document.getElementById('cameraVideo').style.display='';
+    document.getElementById('cameraError').style.display='none';
+    startCameraStream();
+}
+async function startCameraStream(){
+    stopCameraStream();
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+        const el=document.getElementById('cameraError');
+        el.textContent='Tu navegador no permite acceso a la cámara. Usa "Subir foto" en su lugar.';
+        el.style.display='block';return;
+    }
+    try{
+        const constraints={video:{facingMode:{ideal:cameraFacing}},audio:false};
+        cameraStream=await navigator.mediaDevices.getUserMedia(constraints);
+        document.getElementById('cameraVideo').srcObject=cameraStream;
+        try{
+            const devices=await navigator.mediaDevices.enumerateDevices();
+            cameraDevices=devices.filter(d=>d.kind==='videoinput');
+            document.getElementById('cameraSwitchBtn').style.display=cameraDevices.length>1?'':'none';
+        }catch(e){}
+    }catch(err){
+        const el=document.getElementById('cameraError');
+        el.textContent='No se pudo acceder a la cámara. Revisa los permisos del navegador/sitio.';
+        el.style.display='block';
+    }
+}
+function stopCameraStream(){if(cameraStream){cameraStream.getTracks().forEach(t=>t.stop());cameraStream=null;}}
+function switchCamera(){cameraFacing=cameraFacing==='environment'?'user':'environment';startCameraStream();}
+function captureCameraPhoto(){
+    const video=document.getElementById('cameraVideo'),canvas=document.getElementById('cameraCanvas');
+    if(!video.videoWidth){toast('La cámara aún no está lista','err');return;}
+    const maxW=480,scale=Math.min(1,maxW/video.videoWidth);
+    canvas.width=Math.round(video.videoWidth*scale);canvas.height=Math.round(video.videoHeight*scale);
+    canvas.getContext('2d').drawImage(video,0,0,canvas.width,canvas.height);
+    const dataUrl=canvas.toDataURL('image/jpeg',0.85);
+    window._capturedPhoto=dataUrl;
+    document.getElementById('cameraCapturedImg').src=dataUrl;
+    document.getElementById('cameraCapturedImg').style.display='block';
+    document.getElementById('cameraVideo').style.display='none';
+    document.getElementById('cameraCaptureBtn').style.display='none';
+    document.getElementById('cameraRetakeBtn').style.display='';
+    document.getElementById('cameraUseBtn').style.display='';
+}
+function retakeCameraPhoto(){
+    document.getElementById('cameraCapturedImg').style.display='none';
+    document.getElementById('cameraVideo').style.display='';
+    document.getElementById('cameraCaptureBtn').style.display='';
+    document.getElementById('cameraRetakeBtn').style.display='none';
+    document.getElementById('cameraUseBtn').style.display='none';
+}
+function useCameraPhoto(){if(window._capturedPhoto)setFotoPreview(window._capturedPhoto);closeCamera();}
+function closeCamera(){document.getElementById('cameraOverlay').classList.remove('open');stopCameraStream();}
+function closeCameraOutside(e){if(e.target===document.getElementById('cameraOverlay'))closeCamera();}
+
 function renderGenerate(){
     const selId=window._genId||'', st=selId?S.students.find(s=>s.id===parseInt(selId)):null;
     document.getElementById('generatePage').innerHTML=`<div class="pg-hdr"><div><div class="pg-ttl">Generar Credencial</div></div></div><div class="gen-selector"><select onchange="window._genId=this.value;renderGenerate()"><option value="">— Seleccionar alumno —</option>${S.students.map(s=>`<option value="${s.id}">${escH(s.nombre)} — ${s.grado}° ${s.grupo} (ID:${s.matricula||s.id})</option>`).join('')}</select>${st?`<button class="btn btn-navy" onclick="printCredential(${st.id})">🖨️ Imprimir</button><button class="btn btn-out" onclick="printCredential(${st.id},'front')">Solo Frente</button><button class="btn btn-out" onclick="printCredential(${st.id},'back')">Solo Reverso</button>`:''}</div>${st?`<div class="cred-prev-wrap"><div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,380,'front')}</div></div><div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,380,'back')}</div></div></div>`:`<div class="gen-no-sel">Selecciona un alumno</div>`}`;
@@ -428,10 +565,10 @@ function printCredential(id,side){
 }
 function escH(s){return String(s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"');}
 function toast(msg,type='ok'){const icons={ok:'✅',err:'❌',wrn:'⚠️'};const el=document.createElement('div');el.className=`toast ${type==='err'?'err':type==='wrn'?'wrn':''}`;el.innerHTML=`<span>${icons[type]}</span><span>${escH(msg)}</span><button onclick="this.parentElement.remove()">✕</button>`;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),3200);}
-function updateHeader(){const el=document.getElementById('hdrLogo');if(S.logo){el.innerHTML=`<img src="${S.logo}">`;el.style.background='transparent';}else{el.innerHTML=(S.config.clave||'C').charAt(0).toUpperCase();el.style.background='var(--gold)';}document.getElementById('hdrSub').textContent=S.config.nombre||'Configura tu escuela';document.getElementById('hdrPill').textContent='v6.3';}
+function updateHeader(){const el=document.getElementById('hdrLogo');if(S.logo){el.innerHTML=`<img src="${S.logo}">`;el.style.background='transparent';}else{el.innerHTML=(S.config.clave||'C').charAt(0).toUpperCase();el.style.background='var(--gold)';}document.getElementById('hdrSub').textContent=S.config.nombre||'Configura tu escuela';document.getElementById('hdrPill').textContent='v6.4';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 load();updateHeader();renderStudents();
-console.log('✅ App Credenciales v6.3 - Diseños de fondo + ID editable');
+console.log('✅ App Credenciales v6.4 - Cámara, firma y ajustes de diseño');
 </script>
 </body>
 </html>
