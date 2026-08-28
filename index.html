@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Credenciales Escolares | v6.5</title>
+    <title>Credenciales Escolares | v6.6</title>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -105,6 +105,8 @@
         .input-modern { width:100%;padding:12px 14px;border:2px solid var(--border);border-radius:10px;font-size:0.95em;transition:all .2s;background:white; }
         .input-modern:focus { outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(11,45,107,.1); }
         .select-modern { width:100%;padding:12px;border:2px solid var(--border);border-radius:10px;font-size:0.9em;background:white; }
+        .ce-clickable { cursor: pointer; transition: outline .15s, background .15s; border-radius: 2px; }
+        .ce-clickable:hover { outline: 1.5px dashed var(--gold); outline-offset: 2px; background: rgba(196,146,42,.12); }
 
         /* ===== RESPONSIVE: tablets y celulares ===== */
         #sbBackdrop { position: fixed; inset: 0; background: rgba(7,29,71,.55); z-index: 150; display: none; }
@@ -152,7 +154,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
             <span class="fb-dot on" id="fbDot"></span>
-            <div class="hdr-pill" id="hdrPill">v6.5</div>
+            <div class="hdr-pill" id="hdrPill">v6.6</div>
             <span class="hdr-powered" style="font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;">Powered by <strong style="color:rgba(255,255,255,.65);font-weight:700;">ElProfeChan</strong></span>
         </div>
     </header>
@@ -165,7 +167,7 @@
             <div class="nav-item" data-page="generate"><div class="ni-icon">🖨️</div><span>Generar</span></div>
         </div>
         <div class="sb-section"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
-        <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v6.5</div></div>
+        <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v6.6</div></div>
     </nav>
     <main id="main">
         <section class="page active" id="page-students">
@@ -330,8 +332,9 @@ const S = {
         directorName: { fontFamily:'Arial', fontSize:10, color:N, align:'center', bold:true },
         directorInfo: { fontFamily:'Arial', fontSize:8, color:'#475569', align:'center' },
         directorAddr: { fontFamily:'Arial', fontSize:7, color:'#64748b', align:'center' },
+        idBadge: { fontFamily:'Arial', fontSize:6, color:N, align:'center', bold:true },
         margins: { front:{top:0,bottom:0,left:0,right:0}, back:{top:0,bottom:0,left:0,right:0} },
-        bgOpacity:35, bgFit:'cover', directorOffsets:{line:0,name:0,cargo:0}
+        bgOpacity:35, bgFit:'cover', directorGroupOffset:0, positions:{foto:{h:'left',v:'top'},qr:{h:'right',v:'top'},escudo:{h:'left',v:'top'}}
     },
     editId:null, editingElement:'schoolName', marginSide:'front', activeTab:'logobg'
 };
@@ -341,7 +344,7 @@ function load(){
     db.ref('configuracion/credenciales').once('value').then(snap => { const data=snap.val(); if(data&&data.nombre)S.config=data; else { try{const c=JSON.parse(localStorage.getItem('cred_cfg'));if(c)S.config=c}catch(e){} } updateHeader(); });
     db.ref('configuracion/credenciales/logo').once('value').then(snap => { if(snap.val())S.logo=snap.val(); else try{S.logo=localStorage.getItem('cred_logo')||''}catch(e){} });
     db.ref('configuracion/credenciales/bgImage').once('value').then(snap => { if(snap.val())S.bgImage=snap.val(); else try{S.bgImage=localStorage.getItem('cred_bg')||''}catch(e){} });
-    db.ref('configuracion/credenciales/designStyles').once('value').then(snap => { if(snap.val())S.designStyles=snap.val(); else try{const ds=JSON.parse(localStorage.getItem('cred_ds'));if(ds)S.designStyles=ds}catch(e){} if(!S.designStyles.margins)S.designStyles.margins={front:{top:0,bottom:0,left:0,right:0},back:{top:0,bottom:0,left:0,right:0}}; if(!S.designStyles.directorOffsets)S.designStyles.directorOffsets={line:0,name:0,cargo:0}; });
+    db.ref('configuracion/credenciales/designStyles').once('value').then(snap => { if(snap.val())S.designStyles=snap.val(); else try{const ds=JSON.parse(localStorage.getItem('cred_ds'));if(ds)S.designStyles=ds}catch(e){} if(!S.designStyles.margins)S.designStyles.margins={front:{top:0,bottom:0,left:0,right:0},back:{top:0,bottom:0,left:0,right:0}}; if(S.designStyles.directorGroupOffset===undefined)S.designStyles.directorGroupOffset=0; if(!S.designStyles.positions)S.designStyles.positions={foto:{h:'left',v:'top'},qr:{h:'right',v:'top'},escudo:{h:'left',v:'top'}}; });
     db.ref('alumnos').on('value', snap => { const data=snap.val(); if(data){S.students=Object.values(data);renderStudents();} });
 }
 
@@ -367,53 +370,67 @@ function toggleSidebar(force){
 
 function getFrame(w,h,hasBg){ return `${hasBg?'':`<rect width="${w}" height="${h}" fill="white"/>`}<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" fill="none" stroke="${N}" stroke-width="1.5" rx="6"/>`; }
 
-function credCard(st,cfg,logo,bg,w,h,side){
+function posCSS(pos,padTop,padSide){
+    pos=pos||{h:'left',v:'top'};
+    const h=pos.h||'left', v=pos.v||'top';
+    let s='position:absolute;';
+    if(h==='left')s+=`left:${padSide}px;`; else if(h==='right')s+=`right:${padSide}px;`; else s+='left:50%;';
+    if(v==='top')s+=`top:${padTop}px;`; else if(v==='bottom')s+=`bottom:${padTop}px;`; else s+='top:50%;';
+    const tx=h==='center'?'-50%':'0', ty=v==='center'?'-50%':'0';
+    if(h==='center'||v==='center')s+=`transform:translate(${tx},${ty});`;
+    return s;
+}
+function credCard(st,cfg,logo,bg,w,h,side,interactive){
     const hasBg=!!bg, ds=S.designStyles;
-    const dirOff=ds.directorOffsets||{line:0,name:0,cargo:0};
+    const dirGroupOff=ds.directorGroupOffset||0;
+    const pos=ds.positions||{foto:{h:'left',v:'top'},qr:{h:'right',v:'top'},escudo:{h:'left',v:'top'}};
     const m=(side==='front'?ds.margins.front:ds.margins.back)||{top:0,bottom:0,left:0,right:0};
     const op=ds.bgOpacity??35, fit=ds.bgFit||'cover', sc=w/215, fs=n=>(n*sc).toFixed(1), cm=cm=>(cm*h)/8.56;
     const barH=Math.round(h/20), bp=6;
     let tp=bp+4+m.top*sc; if(side==='back')tp+=cm(0.5);
     const bpB=bp+barH+4+m.bottom*sc, lp=bp+10+m.left*sc, rp=bp+10+m.right*sc, cw=w-lp-rp, ch=h-tp-bpB;
     const stl=s=>s?`font-family:${s.fontFamily||'Arial'};font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}`:'';
+    const styledDiv=(key,extraStyle,content)=>{const click=interactive?`onclick="event.stopPropagation();selectStyleElement('${key}')" class="ce-clickable"`:'';return `<div ${click} style="${stl(ds[key])}${extraStyle||''}">${content}</div>`;};
     const logoEl=logo?`<img src="${logo}" style="width:${fs(36)}px;height:${fs(36)}px;border-radius:50%;object-fit:contain;border:2px solid ${N};background:white;padding:2px">`:`<div style="width:${fs(36)}px;height:${fs(36)}px;border-radius:50%;background:${N};display:flex;align-items:center;justify-content:center;color:white;font-size:${fs(8)}px;font-weight:800">${(cfg.clave||'ESC').slice(0,3).toUpperCase()}</div>`;
     const bgTag=hasBg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:'';
     const studentId=st?.matricula||st?.id||'—';
     const photoBox=st?.foto?`<div style="width:${fs(80)}px;height:${fs(100)}px;border:3px solid ${N};border-radius:${fs(6)}px;flex-shrink:0;overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`:`<div style="width:${fs(80)}px;height:${fs(100)}px;border:3px solid ${N};background:#f1f5f9;display:flex;align-items:center;justify-content:center;border-radius:${fs(6)}px;flex-shrink:0;"><span style="font-size:${fs(36)}px;color:#cbd5e1;">👤</span></div>`;
+    const escudoEl=`<div style="${posCSS(pos.escudo,fs(4),fs(4))}z-index:3;">${logoEl}</div>`;
+    const fotoEl=`<div style="${posCSS(pos.foto,fs(44),fs(6))}z-index:3;">${photoBox}</div>`;
+    const qrEl=`<div style="${posCSS(pos.qr,fs(44),fs(6))}display:flex;flex-direction:column;align-items:center;gap:${fs(3)}px;z-index:3;"><div id="qr-${st?.id||'preview'}" style="width:${fs(60)}px;height:${fs(60)}px;border:2px solid ${N};border-radius:${fs(4)}px;display:flex;align-items:center;justify-content:center;background:white;"></div>${styledDiv('idBadge',`background:${G}20;padding:${fs(2)}px ${fs(5)}px;border-radius:${fs(2)}px;white-space:nowrap;`,`ID: ${studentId}`)}</div>`;
     const front=`
-        <div style="display:flex;align-items:center;gap:${fs(6)}px;margin-bottom:${fs(4)}px;padding-bottom:${fs(3)}px;border-bottom:2px solid ${G};">
-            ${logoEl}<div style="flex:1;text-align:center;"><div style="${stl(ds.schoolName)}">${escH(cfg.nombre)||'NOMBRE DE LA ESCUELA'}</div><div style="${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'} | ${escH(cfg.ciclo)||'Ciclo Escolar'}</div></div>
+        ${escudoEl}${fotoEl}${qrEl}
+        <div style="text-align:center;margin-bottom:${fs(4)}px;padding:0 ${fs(42)}px ${fs(3)}px;border-bottom:2px solid ${G};min-height:${fs(36)}px;display:flex;flex-direction:column;justify-content:center;">
+            ${styledDiv('schoolName','',escH(cfg.nombre)||'NOMBRE DE LA ESCUELA')}
+            ${styledDiv('infoLine','',`CCT: ${escH(cfg.clave)||'—'} | ${escH(cfg.ciclo)||'Ciclo Escolar'}`)}
         </div>
-        <div style="display:flex;align-items:center;gap:${fs(8)}px;margin:${fs(4)}px 0;">
-            ${photoBox}
-            <div style="display:flex;flex-direction:column;align-items:center;gap:${fs(3)}px;flex-shrink:0;">
-                <div id="qr-${st?.id||'preview'}" style="width:${fs(60)}px;height:${fs(60)}px;border:2px solid ${N};border-radius:${fs(4)}px;display:flex;align-items:center;justify-content:center;background:white;"></div>
-                <div style="font-size:${fs(6)}px;font-weight:800;color:${N};background:${G}20;padding:${fs(2)}px ${fs(5)}px;border-radius:${fs(2)}px;">ID: ${studentId}</div>
-            </div>
-        </div>
-        <div style="${stl(ds.studentName)} margin:${fs(4)}px 0;text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
+        <div style="height:${fs(100)}px;"></div>
+        ${styledDiv('studentName',`margin:${fs(4)}px 0;text-align:center;`,escH(st?.nombre||'Nombre del Alumno'))}
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:${fs(3)}px;margin-top:${fs(3)}px;padding-top:${fs(3)}px;border-top:1.5px solid #e2e8f0;">
-            ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N};padding:${fs(2)}px ${fs(4)}px;"><div style="${stl(ds.dataLabel)} text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)}">${v}</div></div>`).join('')}
+            ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N};padding:${fs(2)}px ${fs(4)}px;">${styledDiv('dataLabel','text-transform:uppercase;',l)}${styledDiv('dataValue','',v)}</div>`).join('')}
         </div>`;
     const back=`
-        <div style="background:${N};color:white;text-align:center;font-weight:800;text-transform:uppercase;padding:${fs(5)}px;border-radius:${fs(4)}px;margin-bottom:${fs(8)}px;font-size:${fs(ds.backTitle.fontSize||9)}px;">Información de Contacto</div>
+        ${styledDiv('backTitle',`background:${N};color:white;text-align:center;font-weight:800;text-transform:uppercase;padding:${fs(5)}px;border-radius:${fs(4)}px;margin-bottom:${fs(8)}px;font-size:${fs(ds.backTitle.fontSize||9)}px;`,'Información de Contacto')}
         <div style="flex:1;display:flex;flex-direction:column;gap:${fs(6)}px;">
-            <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Domicilio</div><div style="${stl(ds.backField)}">${escH(st?.domicilio)||'—'}</div></div>
-            <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Tutor</div><div style="${stl(ds.backField)}">${escH(st?.tutor)||'—'}</div></div>
+            <div>${styledDiv('backField','border-bottom:1px solid '+G+';padding-bottom:2px;margin-bottom:3px;font-weight:800;','Domicilio')}${styledDiv('backField','',escH(st?.domicilio)||'—')}</div>
+            <div>${styledDiv('backField','border-bottom:1px solid '+G+';padding-bottom:2px;margin-bottom:3px;font-weight:800;','Tutor')}${styledDiv('backField','',escH(st?.tutor)||'—')}</div>
             <div style="display:grid;grid-template-columns:1.1fr .9fr;gap:${fs(8)}px;">
-                <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Teléfono</div><div style="${stl(ds.backField)}">${escH(st?.telefono)||'—'}</div></div>
-                <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Sangre</div><div style="font-size:${fs(12)}px;font-weight:900;color:#CC0000;">${escH(st?.tipoSangre)||'—'}</div></div>
+                <div>${styledDiv('backField','border-bottom:1px solid '+G+';padding-bottom:2px;margin-bottom:3px;font-weight:800;','Teléfono')}${styledDiv('backField','',escH(st?.telefono)||'—')}</div>
+                <div>${styledDiv('backField','border-bottom:1px solid '+G+';padding-bottom:2px;margin-bottom:3px;font-weight:800;','Sangre')}<div style="font-size:${fs(12)}px;font-weight:900;color:#CC0000;">${escH(st?.tipoSangre)||'—'}</div></div>
             </div>
-            <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G};padding-bottom:2px;margin-bottom:3px;font-weight:800;">Alergias</div><div style="${stl(ds.backField)}">${escH(st?.alergias)||'Ninguna'}</div></div>
+            <div>${styledDiv('backField','border-bottom:1px solid '+G+';padding-bottom:2px;margin-bottom:3px;font-weight:800;','Alergias')}${styledDiv('backField','',escH(st?.alergias)||'Ninguna')}</div>
         </div>
-        <div style="border-top:2px solid ${G};padding-top:${fs(5)}px;margin-top:${fs(dirOff.line||0)}px;text-align:center;">
-            <div style="${stl(ds.directorName)} margin-top:${fs(dirOff.name||0)}px;">${escH(cfg.director)||'Director'}</div><div style="${stl(ds.directorInfo)} margin:${fs(2+(dirOff.cargo||0))}px 0 ${fs(2)}px;">${escH(cfg.cargo)||'Director(a)'}</div><div style="${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
-        </div>`;
+        <div style="border-top:2px solid ${G};padding-top:${fs(5)}px;margin-top:${fs(dirGroupOff)}px;text-align:center;flex-shrink:0;">
+            ${styledDiv('directorName','',escH(cfg.director)||'Director')}
+            ${styledDiv('directorInfo',`margin-top:${fs(2)}px;`,escH(cfg.cargo)||'Director(a)')}
+        </div>
+        <div style="text-align:center;margin-top:${fs(3)}px;flex-shrink:0;">${styledDiv('directorAddr','',escH(cfg.direccion)||'Dirección')}</div>`;
     return `<div style="position:relative;width:${w}px;height:${h}px;border-radius:6px;overflow:hidden;">${bgTag}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute;top:${tp}px;left:${lp}px;width:${cw}px;height:${ch}px;z-index:2;display:flex;flex-direction:column;">${side==='front'?front:back}</div></div>`;
 }
+function selectStyleElement(key){S.editingElement=key;S.activeTab='style';renderDesign();}
 
 function generateQRCodes(){setTimeout(()=>{document.querySelectorAll('[id^="qr-"]').forEach(el=>{if(el.hasChildNodes())return;const idPart=el.id.replace('qr-','');let text='SIN_ID';if(idPart==='preview')text='PREVIEW';else{const st=S.students.find(s=>String(s.id)===idPart||String(s.matricula)===idPart);if(st)text=st.matricula||String(st.id);}try{new QRCode(el,{text:text,width:60,height:60,colorDark:'#0B2D6B',colorLight:'#ffffff'});}catch(e){el.innerHTML='<span style="font-size:8px;">QR</span>';}});},400);}
-function refreshPreview(){const fk={nombre:'Juan Pérez',grado:'3',grupo:'A',turno:'Matutino',vigencia:'2024-2025',domicilio:'Calle 123',tutor:'María García',telefono:'9511234567',tipoSangre:'O+',alergias:'Ninguna',id:'preview',matricula:'PREVIEW'};const fe=document.getElementById('frontPrev'),be=document.getElementById('backPrev');if(fe)fe.innerHTML=credCard(fk,S.config,S.logo,S.bgImage,240,380,'front');if(be)be.innerHTML=credCard(fk,S.config,S.logo,S.bgImage,240,380,'back');generateQRCodes();}
+function refreshPreview(){const fk={nombre:'Juan Pérez',grado:'3',grupo:'A',turno:'Matutino',vigencia:'2024-2025',domicilio:'Calle 123',tutor:'María García',telefono:'9511234567',tipoSangre:'O+',alergias:'Ninguna',id:'preview',matricula:'PREVIEW'};const fe=document.getElementById('frontPrev'),be=document.getElementById('backPrev');if(fe)fe.innerHTML=credCard(fk,S.config,S.logo,S.bgImage,240,380,'front',true);if(be)be.innerHTML=credCard(fk,S.config,S.logo,S.bgImage,240,380,'back',true);generateQRCodes();}
 function switchTab(tab){S.activeTab=tab;renderDesign();}
 function changeEditingElement(key){S.editingElement=key;renderDesign();}
 function updateStyle(prop,val){if(!S.editingElement)return;if(!S.designStyles[S.editingElement])S.designStyles[S.editingElement]={};S.designStyles[S.editingElement][prop]=val;saveDS();refreshPreview();}
@@ -421,18 +438,19 @@ function setAlignment(a){updateStyle('align',a);}
 function changeMarginSide(side){S.marginSide=side;renderDesign();}
 function adjustMargin(side,delta){const t=S.marginSide==='front'?S.designStyles.margins.front:S.designStyles.margins.back;let n=(t[side]||0)+delta;if(n<0)n=0;if(n>20)n=20;t[side]=n;saveDS();refreshPreview();renderDesign();}
 function updateMarginFromInput(side,val){const t=S.marginSide==='front'?S.designStyles.margins.front:S.designStyles.margins.back;let n=parseInt(val);if(isNaN(n))n=0;if(n<0)n=0;if(n>20)n=20;t[side]=n;saveDS();refreshPreview();}
-function adjustDirOffset(key,delta){const o=S.designStyles.directorOffsets||(S.designStyles.directorOffsets={line:0,name:0,cargo:0});let n=(o[key]||0)+delta;if(n<-20)n=-20;if(n>30)n=30;o[key]=n;saveDS();refreshPreview();renderDesign();}
-function updateDirOffsetFromInput(key,val){const o=S.designStyles.directorOffsets||(S.designStyles.directorOffsets={line:0,name:0,cargo:0});let n=parseInt(val);if(isNaN(n))n=0;if(n<-20)n=-20;if(n>30)n=30;o[key]=n;saveDS();refreshPreview();}
+function adjustDirGroupOffset(delta){let n=(S.designStyles.directorGroupOffset||0)+delta;if(n<-20)n=-20;if(n>30)n=30;S.designStyles.directorGroupOffset=n;saveDS();refreshPreview();renderDesign();}
+function updateDirGroupOffsetFromInput(val){let n=parseInt(val);if(isNaN(n))n=0;if(n<-20)n=-20;if(n>30)n=30;S.designStyles.directorGroupOffset=n;saveDS();refreshPreview();}
+function updatePosition(el,axis,val){if(!S.designStyles.positions)S.designStyles.positions={foto:{h:'left',v:'top'},qr:{h:'right',v:'top'},escudo:{h:'left',v:'top'}};S.designStyles.positions[el][axis]=val;saveDS();refreshPreview();}
 function updateBgOpacity(val){S.designStyles.bgOpacity=parseInt(val);saveDS();const lbl=document.getElementById('bgOpacityVal');if(lbl)lbl.textContent=val+'%';refreshPreview();}
 function updateBgFit(val){S.designStyles.bgFit=val;saveDS();refreshPreview();}
 
 function renderDesign(){
-    const ds=S.designStyles,cur=ds[S.editingElement]||{},m=(S.marginSide==='front'?ds.margins.front:ds.margins.back);
-    const names={schoolName:'Escuela',infoLine:'CCT/Ciclo',studentName:'Alumno',dataLabel:'Etiquetas',dataValue:'Valores',backTitle:'Título rev.',backField:'Campos rev.',directorName:'Director',directorInfo:'Cargo',directorAddr:'Dirección'};
+    const ds=S.designStyles,cur=ds[S.editingElement]||{},m=(S.marginSide==='front'?ds.margins.front:ds.margins.back),pos=ds.positions||{foto:{h:'left',v:'top'},qr:{h:'right',v:'top'},escudo:{h:'left',v:'top'}};
+    const names={schoolName:'Escuela',infoLine:'CCT/Ciclo',studentName:'Alumno',dataLabel:'Etiquetas',dataValue:'Valores',backTitle:'Título rev.',backField:'Campos rev.',directorName:'Director',directorInfo:'Cargo',directorAddr:'Dirección',idBadge:'Insignia ID'};
     const tabHTML={
         logobg:`<div style="display:flex;gap:20px;flex-wrap:wrap;"><div class="card" style="flex:1;min-width:200px;"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Logo</div></div><div style="display:flex;align-items:center;gap:12px;">${S.logo?`<img class="logo-preview-sm" src="${S.logo}">`:'<div class="logo-preview-sm" style="display:flex;align-items:center;justify-content:center;font-size:18px;color:#94a3b8;">🏫</div>'}<div><button class="btn btn-navy btn-sm" onclick="document.getElementById('logoInput').click()">${S.logo?'Cambiar':'Subir'}</button>${S.logo?'<button class="btn btn-err btn-sm" onclick="removeLogo()">Eliminar</button>':''}</div></div></div><div class="card" style="flex:2;min-width:320px;"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Diseño de fondo</div></div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:12px;margin-bottom:14px;">${DESIGN_PRESETS.map(p=>{const sel=S.bgImage===p.img;return `<div onclick="selectPresetBg('${p.id}')" style="cursor:pointer;text-align:center;" title="${p.name}"><div style="width:100%;aspect-ratio:2/3;border-radius:8px;overflow:hidden;border:2.5px solid ${sel?'var(--gold)':'var(--border)'};${sel?'box-shadow:0 0 0 2px rgba(196,146,42,.35);':''}"><img src="${p.img}" style="width:100%;height:100%;object-fit:cover;display:block;"></div><div style="font-size:9.5px;color:${sel?'var(--navy)':'var(--text-2)'};margin-top:4px;font-weight:${sel?'700':'600'};">${sel?'✓ ':''}${p.name}</div></div>`;}).join('')}${S.bgImage&&!DESIGN_PRESETS.some(p=>p.img===S.bgImage)?`<div style="text-align:center;" title="Tu diseño"><div style="width:100%;aspect-ratio:2/3;border-radius:8px;overflow:hidden;border:2.5px solid var(--gold);box-shadow:0 0 0 2px rgba(196,146,42,.35);"><img src="${S.bgImage}" style="width:100%;height:100%;object-fit:cover;display:block;"></div><div style="font-size:9.5px;color:var(--navy);margin-top:4px;font-weight:700;">✓ Tu diseño</div></div>`:''}</div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;"><button class="btn btn-navy btn-sm" onclick="document.getElementById('bgInput').click()">📤 Subir otro diseño</button>${S.bgImage?'<button class="btn btn-err btn-sm" onclick="removeBg()">Quitar fondo</button>':''}</div><div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div><div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div></div></div>`,
-        style:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Estilos</div></div><select onchange="changeEditingElement(this.value)" style="width:100%;margin-bottom:12px;">${Object.entries(names).map(([k,v])=>`<option value="${k}" ${S.editingElement===k?'selected':''}>${v}</option>`).join('')}</select><div class="inline-style-bar"><label>Fuente</label><select onchange="updateStyle('fontFamily',this.value)"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select><label>Tamaño</label><input type="number" value="${cur.fontSize||12}" min="6" max="30" style="width:55px;" onchange="updateStyle('fontSize',parseInt(this.value))"><label>Color</label><input type="color" value="${cur.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)"><label><input type="checkbox" ${cur.bold?'checked':''} onchange="updateStyle('bold',this.checked)"> Negrita</label><label>Alin.</label><div class="align-btns">${['left','center','right','justify'].map(a=>`<button class="${cur.align===a?'active':''}" onclick="setAlignment('${a}')">${a[0].toUpperCase()}</button>`).join('')}</div></div></div>`,
-        margins:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Márgenes</div></div><div class="margin-side-switch"><div class="margin-side-btn ${S.marginSide==='front'?'active':''}" onclick="changeMarginSide('front')">Frente</div><div class="margin-side-btn ${S.marginSide==='back'?'active':''}" onclick="changeMarginSide('back')">Reverso</div></div>${['top','bottom','left','right'].map(side=>`<div class="margin-control"><label>${side==='top'?'Superior':side==='bottom'?'Inferior':side==='left'?'Izquierdo':'Derecho'}</label><button class="margin-btn" onclick="adjustMargin('${side}',-1)">−</button><input type="number" value="${m[side]||0}" min="0" max="20" onchange="updateMarginFromInput('${side}',this.value)"><button class="margin-btn" onclick="adjustMargin('${side}',1)">+</button></div>`).join('')}</div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Posición: línea, director y cargo (Reverso)</div></div>${[['line','Línea amarilla'],['name','Nombre del director'],['cargo','Cargo del director']].map(([k,l])=>`<div class="margin-control"><label>${l}</label><button class="margin-btn" onclick="adjustDirOffset('${k}',-1)">−</button><input type="number" value="${(ds.directorOffsets&&ds.directorOffsets[k])||0}" min="-20" max="30" onchange="updateDirOffsetFromInput('${k}',this.value)"><button class="margin-btn" onclick="adjustDirOffset('${k}',1)">+</button></div>`).join('')}<div style="font-size:11px;color:var(--text-2);margin-top:6px;">Sube o baja cada elemento por separado. Aumentar el valor los mueve hacia abajo (útil para dejar espacio en blanco arriba, por ejemplo para la firma a mano); un valor negativo los sube.</div></div>`
+        style:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Estilos</div></div><div style="font-size:11px;color:var(--text-2);margin-bottom:10px;background:var(--gold-pale);border:1px solid var(--gold);border-radius:8px;padding:8px 10px;">💡 Tip: haz clic directamente sobre cualquier texto en la vista previa de abajo para seleccionarlo aquí.</div><select onchange="changeEditingElement(this.value)" style="width:100%;margin-bottom:12px;">${Object.entries(names).map(([k,v])=>`<option value="${k}" ${S.editingElement===k?'selected':''}>${v}</option>`).join('')}</select><div class="inline-style-bar"><label>Fuente</label><select onchange="updateStyle('fontFamily',this.value)"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select><label>Tamaño</label><input type="number" value="${cur.fontSize||12}" min="6" max="30" style="width:55px;" onchange="updateStyle('fontSize',parseInt(this.value))"><label>Color</label><input type="color" value="${cur.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)"><label><input type="checkbox" ${cur.bold?'checked':''} onchange="updateStyle('bold',this.checked)"> Negrita</label><label>Alin.</label><div class="align-btns">${['left','center','right','justify'].map(a=>`<button class="${cur.align===a?'active':''}" onclick="setAlignment('${a}')">${a[0].toUpperCase()}</button>`).join('')}</div></div></div>`,
+        margins:`<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Márgenes</div></div><div class="margin-side-switch"><div class="margin-side-btn ${S.marginSide==='front'?'active':''}" onclick="changeMarginSide('front')">Frente</div><div class="margin-side-btn ${S.marginSide==='back'?'active':''}" onclick="changeMarginSide('back')">Reverso</div></div>${['top','bottom','left','right'].map(side=>`<div class="margin-control"><label>${side==='top'?'Superior':side==='bottom'?'Inferior':side==='left'?'Izquierdo':'Derecho'}</label><button class="margin-btn" onclick="adjustMargin('${side}',-1)">−</button><input type="number" value="${m[side]||0}" min="0" max="20" onchange="updateMarginFromInput('${side}',this.value)"><button class="margin-btn" onclick="adjustMargin('${side}',1)">+</button></div>`).join('')}</div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Grupo: línea, director y cargo (Reverso)</div></div><div class="margin-control"><label>Posición</label><button class="margin-btn" onclick="adjustDirGroupOffset(-1)">−</button><input type="number" value="${ds.directorGroupOffset||0}" min="-20" max="30" onchange="updateDirGroupOffsetFromInput(this.value)"><button class="margin-btn" onclick="adjustDirGroupOffset(1)">+</button></div><div style="font-size:11px;color:var(--text-2);margin-top:6px;">La línea dorada, el nombre del director y su cargo se mueven juntos, como un solo grupo. La dirección queda fija en la parte inferior, independiente de este grupo.</div></div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Posición: escudo, foto y QR (Frente)</div></div>${[['escudo','Escudo / Logo'],['foto','Fotografía'],['qr','Código QR']].map(([k,l])=>{const p=pos[k]||{h:'left',v:'top'};return `<div style="margin-bottom:14px;"><div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:6px;">${l}</div><div style="display:flex;gap:10px;flex-wrap:wrap;"><select onchange="updatePosition('${k}','h',this.value)" style="flex:1;min-width:110px;"><option value="left" ${p.h==='left'?'selected':''}>Izquierda</option><option value="center" ${p.h==='center'?'selected':''}>Centro</option><option value="right" ${p.h==='right'?'selected':''}>Derecha</option></select><select onchange="updatePosition('${k}','v',this.value)" style="flex:1;min-width:110px;"><option value="top" ${p.v==='top'?'selected':''}>Arriba</option><option value="center" ${p.v==='center'?'selected':''}>Centro</option><option value="bottom" ${p.v==='bottom'?'selected':''}>Abajo</option></select></div></div>`;}).join('')}<div style="font-size:11px;color:var(--text-2);margin-top:4px;">Combina horizontal y vertical para ubicar cada elemento donde quieras. Revisa la vista previa para evitar que se encimen.</div></div>`
     };
     document.getElementById('designPage').innerHTML=`<div class="pg-hdr"><div><div class="pg-ttl">Diseño</div></div></div><div class="design-tabs"><div class="design-tab ${S.activeTab==='logobg'?'active':''}" onclick="switchTab('logobg')">Logo y fondo</div><div class="design-tab ${S.activeTab==='style'?'active':''}" onclick="switchTab('style')">Estilos</div><div class="design-tab ${S.activeTab==='margins'?'active':''}" onclick="switchTab('margins')">Márgenes</div></div><div id="tabContent">${tabHTML[S.activeTab]}</div><div class="editor-preview-area"><div><div class="cred-side-lbl">FRENTE</div><div class="design-preview-container" id="frontPrev"></div></div><div><div class="cred-side-lbl">REVERSO</div><div class="design-preview-container" id="backPrev"></div></div></div>`;
     refreshPreview();
@@ -633,10 +651,10 @@ function printCredential(id,side){
 }
 function escH(s){return String(s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"');}
 function toast(msg,type='ok'){const icons={ok:'✅',err:'❌',wrn:'⚠️'};const el=document.createElement('div');el.className=`toast ${type==='err'?'err':type==='wrn'?'wrn':''}`;el.innerHTML=`<span>${icons[type]}</span><span>${escH(msg)}</span><button onclick="this.parentElement.remove()">✕</button>`;document.getElementById('toasts').appendChild(el);setTimeout(()=>el.remove(),3200);}
-function updateHeader(){const el=document.getElementById('hdrLogo');if(S.logo){el.innerHTML=`<img src="${S.logo}">`;el.style.background='transparent';}else{el.innerHTML=(S.config.clave||'C').charAt(0).toUpperCase();el.style.background='var(--gold)';}document.getElementById('hdrSub').textContent=S.config.nombre||'Configura tu escuela';document.getElementById('hdrPill').textContent='v6.5';}
+function updateHeader(){const el=document.getElementById('hdrLogo');if(S.logo){el.innerHTML=`<img src="${S.logo}">`;el.style.background='transparent';}else{el.innerHTML=(S.config.clave||'C').charAt(0).toUpperCase();el.style.background='var(--gold)';}document.getElementById('hdrSub').textContent=S.config.nombre||'Configura tu escuela';document.getElementById('hdrPill').textContent='v6.6';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 load();updateHeader();renderStudents();
-console.log('✅ App Credenciales v6.5 - Responsivo + BD propia + posición director');
+console.log('✅ App Credenciales v6.6 - Posiciones foto/QR/escudo + click-to-color + grupo director');
 </script>
 </body>
 </html>
