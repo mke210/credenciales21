@@ -1376,87 +1376,92 @@
         };
 
         // Funciones de carga y guardado
+        function normalizeDesignStyles() {
+            Object.keys(defaultStyles).forEach(key => {
+                if (!S.designStyles[key]) S.designStyles[key] = { ...defaultStyles[key] };
+                else {
+                    if (S.designStyles[key].bgColor === undefined) S.designStyles[key].bgColor = 'transparent';
+                    if (S.designStyles[key].textShadow === undefined) S.designStyles[key].textShadow = 'none';
+                }
+            });
+            if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
+            if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
+            if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
+            if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0, y: 0 };
+            if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
+            if (!S.designStyles.infoLineOffset) S.designStyles.infoLineOffset = { x: 0, y: 0 };
+            if (S.designStyles.directorNameOffsetY === undefined) S.designStyles.directorNameOffsetY = 0;
+            if (S.designStyles.directorInfoOffsetY === undefined) S.designStyles.directorInfoOffsetY = 0;
+            if (S.designStyles.directorAddrOffsetY === undefined) S.designStyles.directorAddrOffsetY = 0;
+            if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
+            if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
+                    right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
+            if (S.designStyles.signatureSpace === undefined) S.designStyles.signatureSpace = 0;
+        }
+
+        // Refresca lo que esté visible en pantalla cuando llega un cambio remoto (desde otro dispositivo)
+        function refreshActivePage() {
+            updateHeader();
+            const active = document.querySelector('.page.active');
+            if (!active) return;
+            const id = active.id.replace('page-', '');
+            if (id === 'design') renderDesign();
+            else if (id === 'generate') renderGenerate();
+            else if (id === 'config') renderConfig();
+        }
+
         function load() {
             db.ref('alumnos').once('value').then(snap => { const data = snap.val(); if (data) S.students = Object.values(
                 data); else { try { S.students = JSON.parse(localStorage.getItem('cred_st') || '[]') } catch (e) {} } if (S
                     .students.length === 0) S.students = []; renderStudents(); });
-            db.ref('configuracion/credenciales').once('value').then(snap => { const data = snap.val(); if (data && data
-                    .nombre) S.config = data; else { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S
-                        .config = c } catch (e) {} } if (!S.config.subtitulo) S.config.subtitulo = ''; updateHeader(); });
-            db.ref('configuracion/credenciales/logo').once('value').then(snap => { if (snap.val()) S.logo = snap.val();
-                else try { S.logo = localStorage.getItem('cred_logo') || '' } catch (e) {} });
-            db.ref('configuracion/credenciales/bgImage').once('value').then(snap => { if (snap.val()) S.bgImage = snap
-                    .val(); else try { S.bgImage = localStorage.getItem('cred_bg') || '' } catch (e) {} });
-            db.ref('configuracion/credenciales/designStyles').once('value').then(snap => {
+
+            // Escucha en tiempo real: cualquier cambio hecho desde otra computadora/celular se refleja aquí al instante
+            db.ref('configuracion/credenciales').on('value', snap => {
+                const data = snap.val();
+                if (data && data.nombre) { S.config = data; }
+                else if (!S.config.nombre) { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S.config = c } catch (e) {} }
+                if (!S.config.subtitulo) S.config.subtitulo = '';
+                refreshActivePage();
+            });
+            db.ref('configuracion/credenciales/logo').on('value', snap => {
+                if (snap.val()) S.logo = snap.val();
+                else if (!S.logo) { try { S.logo = localStorage.getItem('cred_logo') || '' } catch (e) {} } else S.logo = '';
+                refreshActivePage();
+            });
+            db.ref('configuracion/credenciales/bgImage').on('value', snap => {
+                if (snap.val()) S.bgImage = snap.val();
+                else if (!S.bgImage) { try { S.bgImage = localStorage.getItem('cred_bg') || '' } catch (e) {} } else S.bgImage = '';
+                refreshActivePage();
+            });
+            db.ref('configuracion/credenciales/designStyles').on('value', snap => {
                 if (snap.val()) {
                     S.designStyles = snap.val();
-                    Object.keys(defaultStyles).forEach(key => {
-                        if (!S.designStyles[key]) S.designStyles[key] = { ...defaultStyles[key] };
-                        else {
-                            if (S.designStyles[key].bgColor === undefined) S.designStyles[key].bgColor =
-                                'transparent';
-                            if (S.designStyles[key].textShadow === undefined) S.designStyles[key]
-                                .textShadow = 'none';
-                        }
-                    });
-                    if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
-                    if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
-                    if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
-                    if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0, y: 0 };
-                    if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
-                    if (!S.designStyles.infoLineOffset) S.designStyles.infoLineOffset = { x: 0, y: 0 };
-                    if (S.designStyles.directorNameOffsetY === undefined) S.designStyles.directorNameOffsetY = 0;
-                    if (S.designStyles.directorInfoOffsetY === undefined) S.designStyles.directorInfoOffsetY = 0;
-                    if (S.designStyles.directorAddrOffsetY === undefined) S.designStyles.directorAddrOffsetY = 0;
-                    if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
-                } else {
+                } else if (Object.keys(S.designStyles).length === 0) {
                     try {
                         const ds = JSON.parse(localStorage.getItem('cred_ds'));
-                        if (ds) {
-                            S.designStyles = ds;
-                            Object.keys(defaultStyles).forEach(key => {
-                                if (!S.designStyles[key]) S.designStyles[key] = { ...defaultStyles[key] };
-                                else {
-                                    if (S.designStyles[key].bgColor === undefined) S.designStyles[key]
-                                        .bgColor = 'transparent';
-                                    if (S.designStyles[key].textShadow === undefined) S.designStyles[key]
-                                        .textShadow = 'none';
-                                }
-                            });
-                            if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
-                            if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
-                            if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
-                            if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0,
-                                y: 0 };
-                            if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
-                            if (!S.designStyles.infoLineOffset) S.designStyles.infoLineOffset = { x: 0, y: 0 };
-                            if (S.designStyles.directorNameOffsetY === undefined) S.designStyles
-                                .directorNameOffsetY = 0;
-                            if (S.designStyles.directorInfoOffsetY === undefined) S.designStyles
-                                .directorInfoOffsetY = 0;
-                            if (S.designStyles.directorAddrOffsetY === undefined) S.designStyles
-                                .directorAddrOffsetY = 0;
-                            if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
-                        }
+                        if (ds) S.designStyles = ds;
                     } catch (e) {}
                 }
-                if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
-                        right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
-                if (S.designStyles.signatureSpace === undefined) S.designStyles.signatureSpace = 0;
+                normalizeDesignStyles();
+                refreshActivePage();
             });
+
             db.ref('alumnos').on('value', snap => { const data = snap.val(); if (data) { S.students = Object.values(
                     data);
                     renderStudents(); } });
         }
 
-        function saveSt() { const obj = {}; S.students.forEach(s => obj[s.id] = s); db.ref('alumnos').set(obj);
-            localStorage.setItem('cred_st', JSON.stringify(S.students)); }
+        function saveSt() { const obj = {}; S.students.forEach(s => obj[s.id] = s);
+            db.ref('alumnos').set(obj).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            try { localStorage.setItem('cred_st', JSON.stringify(S.students)); } catch (e) {} }
 
-        function saveCfg() { db.ref('configuracion/credenciales').set(S.config);
-            localStorage.setItem('cred_cfg', JSON.stringify(S.config)); }
+        function saveCfg() {
+            db.ref('configuracion/credenciales').set(S.config).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            try { localStorage.setItem('cred_cfg', JSON.stringify(S.config)); } catch (e) {} }
 
-        function saveDS() { db.ref('configuracion/credenciales/designStyles').set(S.designStyles);
-            localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); }
+        function saveDS() {
+            db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {} }
 
         function nav(pg) {
             document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === pg));
@@ -2320,8 +2325,10 @@
             if (!f.type.startsWith('image/')) { toast('Solo imágenes', 'err'); return; }
             const r = new FileReader();
             r.onload = ev => { S.logo = ev.target.result;
-                db.ref('configuracion/credenciales/logo').set(S.logo);
-                localStorage.setItem('cred_logo', S.logo);
+                db.ref('configuracion/credenciales/logo').set(S.logo)
+                    .then(() => toast('Escudo guardado'))
+                    .catch(err => toast('No se pudo guardar el escudo: ' + err.message, 'err'));
+                try { localStorage.setItem('cred_logo', S.logo); } catch (e) {}
                 updateHeader();
                 renderDesign(); };
             r.readAsDataURL(f);
@@ -2329,8 +2336,9 @@
         }
 
         function removeLogo() { S.logo = '';
-            db.ref('configuracion/credenciales/logo').remove();
-            localStorage.removeItem('cred_logo');
+            db.ref('configuracion/credenciales/logo').remove()
+                .catch(err => toast('No se pudo quitar el escudo: ' + err.message, 'err'));
+            try { localStorage.removeItem('cred_logo'); } catch (e) {}
             updateHeader();
             renderDesign(); }
 
@@ -2340,16 +2348,19 @@
             if (!f.type.startsWith('image/')) { toast('Solo imágenes', 'err'); return; }
             const r = new FileReader();
             r.onload = ev => { S.bgImage = ev.target.result;
-                db.ref('configuracion/credenciales/bgImage').set(S.bgImage);
-                localStorage.setItem('cred_bg', S.bgImage);
+                db.ref('configuracion/credenciales/bgImage').set(S.bgImage)
+                    .then(() => toast('Fondo guardado'))
+                    .catch(err => toast('No se pudo guardar el fondo: ' + err.message, 'err'));
+                try { localStorage.setItem('cred_bg', S.bgImage); } catch (e) {}
                 renderDesign(); };
             r.readAsDataURL(f);
             inp.value = '';
         }
 
         function removeBg() { S.bgImage = '';
-            db.ref('configuracion/credenciales/bgImage').remove();
-            localStorage.removeItem('cred_bg');
+            db.ref('configuracion/credenciales/bgImage').remove()
+                .catch(err => toast('No se pudo quitar el fondo: ' + err.message, 'err'));
+            try { localStorage.removeItem('cred_bg'); } catch (e) {}
             renderDesign(); }
 
         // --- Funciones de cámara y foto (sin cambios) ---
