@@ -1369,9 +1369,15 @@
                 schoolNameOffset: { x: 0, y: 0 },
                 subtitleOffset: { x: 0, y: 0 },
                 infoLineOffset: { x: 0, y: 0 },
-                directorNameOffsetY: 0,
-                directorInfoOffsetY: 0,
-                directorAddrOffsetY: 0
+                studentNameOffset: { x: 0, y: 0 },
+                dataLabelOffset: { x: 0, y: 0 },
+                dataValueOffset: { x: 0, y: 0 },
+                backTitleOffset: { x: 0, y: 0 },
+                backFieldOffset: { x: 0, y: 0 },
+                idLabelOffset: { x: 0, y: 0 },
+                directorNameOffset: { x: 0, y: 0 },
+                directorInfoOffset: { x: 0, y: 0 },
+                directorAddrOffset: { x: 0, y: 0 }
             },
             editId: null,
             editingElement: 'schoolName',
@@ -1394,9 +1400,16 @@
             if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0, y: 0 };
             if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
             if (!S.designStyles.infoLineOffset) S.designStyles.infoLineOffset = { x: 0, y: 0 };
-            if (S.designStyles.directorNameOffsetY === undefined) S.designStyles.directorNameOffsetY = 0;
-            if (S.designStyles.directorInfoOffsetY === undefined) S.designStyles.directorInfoOffsetY = 0;
-            if (S.designStyles.directorAddrOffsetY === undefined) S.designStyles.directorAddrOffsetY = 0;
+            if (!S.designStyles.studentNameOffset) S.designStyles.studentNameOffset = { x: 0, y: 0 };
+            if (!S.designStyles.dataLabelOffset) S.designStyles.dataLabelOffset = { x: 0, y: 0 };
+            if (!S.designStyles.dataValueOffset) S.designStyles.dataValueOffset = { x: 0, y: 0 };
+            if (!S.designStyles.backTitleOffset) S.designStyles.backTitleOffset = { x: 0, y: 0 };
+            if (!S.designStyles.backFieldOffset) S.designStyles.backFieldOffset = { x: 0, y: 0 };
+            if (!S.designStyles.idLabelOffset) S.designStyles.idLabelOffset = { x: 0, y: 0 };
+            // Migración: los directores usaban un offset vertical simple; ahora usan X/Y como el resto de los campos
+            if (!S.designStyles.directorNameOffset) S.designStyles.directorNameOffset = { x: 0, y: S.designStyles.directorNameOffsetY || 0 };
+            if (!S.designStyles.directorInfoOffset) S.designStyles.directorInfoOffset = { x: 0, y: S.designStyles.directorInfoOffsetY || 0 };
+            if (!S.designStyles.directorAddrOffset) S.designStyles.directorAddrOffset = { x: 0, y: S.designStyles.directorAddrOffsetY || 0 };
             if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
             if (S.designStyles.photoScale === undefined) S.designStyles.photoScale = 100;
             if (S.designStyles.qrScale === undefined) S.designStyles.qrScale = 100;
@@ -1525,9 +1538,15 @@
             const snOff = ds.schoolNameOffset || { x: 0, y: 0 };
             const subOff = ds.subtitleOffset || { x: 0, y: 0 };
             const infoOff = ds.infoLineOffset || { x: 0, y: 0 };
-            const dNameOffY = ds.directorNameOffsetY || 0;
-            const dInfoOffY = ds.directorInfoOffsetY || 0;
-            const dAddrOffY = ds.directorAddrOffsetY || 0;
+            const stuOff = ds.studentNameOffset || { x: 0, y: 0 };
+            const dLblOff = ds.dataLabelOffset || { x: 0, y: 0 };
+            const dValOff = ds.dataValueOffset || { x: 0, y: 0 };
+            const bTitleOff = ds.backTitleOffset || { x: 0, y: 0 };
+            const bFieldOff = ds.backFieldOffset || { x: 0, y: 0 };
+            const idOff = ds.idLabelOffset || { x: 0, y: 0 };
+            const dNameOff = ds.directorNameOffset || { x: 0, y: 0 };
+            const dInfoOff = ds.directorInfoOffset || { x: 0, y: 0 };
+            const dAddrOff = ds.directorAddrOffset || { x: 0, y: 0 };
             const logoScale = (ds.logoScale || 100) / 100;
             const logoSize = 36 * logoScale;
             const photoScale = (ds.photoScale || 100) / 100;
@@ -1549,7 +1568,7 @@
                 `
                 <div style="transform:translate(${qo.x}px,${qo.y}px); position:relative; display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px;">
                     <div id="qr-${st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
-                    <div style="${idStyle} background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
+                    <div style="${idStyle} transform:translate(${idOff.x}px,${idOff.y}px); background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
                 </div>
             `;
 
@@ -1582,15 +1601,15 @@
                         ${qrContainer}
                     </div>
                 </div>
-                <div style="${stl(ds.studentName)} margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
+                <div style="${stl(ds.studentName)} transform:translate(${stuOff.x}px,${stuOff.y}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
-                    ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N}; padding:${fs(2)}px ${fs(4)}px;"><div style="${stl(ds.dataLabel)} text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)}">${v}</div></div>`).join('')}
+                    ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N}; padding:${fs(2)}px ${fs(4)}px;"><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)} transform:translate(${dValOff.x}px,${dValOff.y}px);">${v}</div></div>`).join('')}
                 </div>`;
 
             // Reverso con fondo azul y texto blanco asegurado en impresión
             const back = `
-                <div style="background:${N}; color:white; text-align:center; font-weight:800; text-transform:uppercase; padding:${fs(5)}px; border-radius:${fs(4)}px; margin-bottom:${fs(8)}px; font-size:${fs(ds.backTitle.fontSize||9)}px;">Información de Contacto</div>
-                <div style="flex:1; display:flex; flex-direction:column; gap:${fs(4)}px;">
+                <div style="background:${N}; color:white; text-align:center; font-weight:800; text-transform:uppercase; padding:${fs(5)}px; border-radius:${fs(4)}px; margin-bottom:${fs(8)}px; font-size:${fs(ds.backTitle.fontSize||9)}px; transform:translate(${bTitleOff.x}px,${bTitleOff.y}px);">Información de Contacto</div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:${fs(4)}px; transform:translate(${bFieldOff.x}px,${bFieldOff.y}px);">
                     <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Domicilio</div><div style="${stl(ds.backField)}">${escH(st?.domicilio)||'—'}</div></div>
                     <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Tutor</div><div style="${stl(ds.backField)}">${escH(st?.tutor)||'—'}</div></div>
                     <div style="display:grid; grid-template-columns:1.1fr .9fr; gap:${fs(8)}px;">
@@ -1600,9 +1619,9 @@
                     <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Alergias</div><div style="${stl(ds.backField)}">${escH(st?.alergias)||'Ninguna'}</div></div>
                 </div>
                 <div style="border-top:2px solid ${G}; padding-top:${fs(2)}px; margin-top:${fs(ds.signatureSpace||0)}px; text-align:center;">
-                    <div style="transform:translateY(${dNameOffY}px); ${stl(ds.directorName)}">${escH(cfg.director)||'Director'}</div>
-                    <div style="transform:translateY(${dInfoOffY}px); ${stl(ds.directorInfo)} margin:${fs(2)}px 0;">${escH(cfg.cargo)||'Director(a)'}</div>
-                    <div style="transform:translateY(${dAddrOffY}px); ${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
+                    <div style="transform:translate(${dNameOff.x}px,${dNameOff.y}px); ${stl(ds.directorName)}">${escH(cfg.director)||'Director'}</div>
+                    <div style="transform:translate(${dInfoOff.x}px,${dInfoOff.y}px); ${stl(ds.directorInfo)} margin:${fs(2)}px 0;">${escH(cfg.cargo)||'Director(a)'}</div>
+                    <div style="transform:translate(${dAddrOff.x}px,${dAddrOff.y}px); ${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
                 </div>`;
 
             return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
@@ -1716,76 +1735,6 @@
             refreshPreview();
             renderDesign(); }
 
-        // Offsets específicos para textos
-        function updateSchoolNameOffset(axis, delta) { const off = S.designStyles.schoolNameOffset || { x: 0, y: 0 };
-            off[axis] = (off[axis] || 0) + delta;
-            S.designStyles.schoolNameOffset = off;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetSchoolNameOffset() { S.designStyles.schoolNameOffset = { x: 0, y: 0 };
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function updateSubtitleOffset(axis, delta) { const off = S.designStyles.subtitleOffset || { x: 0, y: 0 };
-            off[axis] = (off[axis] || 0) + delta;
-            S.designStyles.subtitleOffset = off;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetSubtitleOffset() { S.designStyles.subtitleOffset = { x: 0, y: 0 };
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function updateInfoLineOffset(axis, delta) { const off = S.designStyles.infoLineOffset || { x: 0, y: 0 };
-            off[axis] = (off[axis] || 0) + delta;
-            S.designStyles.infoLineOffset = off;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetInfoLineOffset() { S.designStyles.infoLineOffset = { x: 0, y: 0 };
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function updateDirectorNameOffset(delta) { let n = (S.designStyles.directorNameOffsetY || 0) + delta; S
-                .designStyles.directorNameOffsetY = n;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetDirectorNameOffset() { S.designStyles.directorNameOffsetY = 0;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function updateDirectorInfoOffset(delta) { let n = (S.designStyles.directorInfoOffsetY || 0) + delta; S
-                .designStyles.directorInfoOffsetY = n;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetDirectorInfoOffset() { S.designStyles.directorInfoOffsetY = 0;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function updateDirectorAddrOffset(delta) { let n = (S.designStyles.directorAddrOffsetY || 0) + delta; S
-                .designStyles.directorAddrOffsetY = n;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
-        function resetDirectorAddrOffset() { S.designStyles.directorAddrOffsetY = 0;
-            saveDS();
-            refreshPreview();
-            renderDesign(); }
-
         // --- renderDesign ---
         function renderDesign() {
             const ds = S.designStyles,
@@ -1798,87 +1747,18 @@
             const isImageElement = S.editingElement === 'photo' || S.editingElement === 'qr';
 
             let extraControls = '';
-            if (S.editingElement === 'schoolName') {
-                const off = ds.schoolNameOffset || { x: 0, y: 0 };
+            if (!isImageElement) {
+                const off = getOffset(S.editingElement);
                 extraControls = `
                     <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover texto:</label>
+                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover:</label>
                         <div class="move-btn-group">
-                            <button onclick="updateSchoolNameOffset('y',-2)" title="Arriba">↑</button>
-                            <button onclick="updateSchoolNameOffset('x',-2)" title="Izquierda">←</button>
-                            <button onclick="updateSchoolNameOffset('x',2)" title="Derecha">→</button>
-                            <button onclick="updateSchoolNameOffset('y',2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetSchoolNameOffset()" title="Centrar (0,0)">⟳</button>
+                            <button onclick="updateOffset('${S.editingElement}','y',-2)" title="Arriba">↑</button>
+                            <button onclick="updateOffset('${S.editingElement}','x',-2)" title="Izquierda">←</button>
+                            <button onclick="updateOffset('${S.editingElement}','x',2)" title="Derecha">→</button>
+                            <button onclick="updateOffset('${S.editingElement}','y',2)" title="Abajo">↓</button>
+                            <button class="pos-reset" onclick="resetOffset('${S.editingElement}')" title="Centrar (0,0)">⟳</button>
                             <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${off.x}  Y: ${off.y}</span>
-                        </div>
-                    </div>
-                `;
-            } else if (S.editingElement === 'subtitle') {
-                const off = ds.subtitleOffset || { x: 0, y: 0 };
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover subtítulo:</label>
-                        <div class="move-btn-group">
-                            <button onclick="updateSubtitleOffset('y',-2)" title="Arriba">↑</button>
-                            <button onclick="updateSubtitleOffset('x',-2)" title="Izquierda">←</button>
-                            <button onclick="updateSubtitleOffset('x',2)" title="Derecha">→</button>
-                            <button onclick="updateSubtitleOffset('y',2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetSubtitleOffset()" title="Centrar (0,0)">⟳</button>
-                            <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${off.x}  Y: ${off.y}</span>
-                        </div>
-                    </div>
-                `;
-            } else if (S.editingElement === 'infoLine') {
-                const off = ds.infoLineOffset || { x: 0, y: 0 };
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover texto:</label>
-                        <div class="move-btn-group">
-                            <button onclick="updateInfoLineOffset('y',-2)" title="Arriba">↑</button>
-                            <button onclick="updateInfoLineOffset('x',-2)" title="Izquierda">←</button>
-                            <button onclick="updateInfoLineOffset('x',2)" title="Derecha">→</button>
-                            <button onclick="updateInfoLineOffset('y',2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetInfoLineOffset()" title="Centrar (0,0)">⟳</button>
-                            <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${off.x}  Y: ${off.y}</span>
-                        </div>
-                    </div>
-                `;
-            } else if (S.editingElement === 'directorName') {
-                const offY = ds.directorNameOffsetY || 0;
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover vertical:</label>
-                        <div class="move-btn-group">
-                            <button onclick="updateDirectorNameOffset(-2)" title="Arriba">↑</button>
-                            <button onclick="updateDirectorNameOffset(2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetDirectorNameOffset()" title="Centrar (0)">⟳</button>
-                            <span style="font-size:12px; color:var(--text-2); margin-left:6px;">Y: ${offY}</span>
-                        </div>
-                    </div>
-                `;
-            } else if (S.editingElement === 'directorInfo') {
-                const offY = ds.directorInfoOffsetY || 0;
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover vertical:</label>
-                        <div class="move-btn-group">
-                            <button onclick="updateDirectorInfoOffset(-2)" title="Arriba">↑</button>
-                            <button onclick="updateDirectorInfoOffset(2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetDirectorInfoOffset()" title="Centrar (0)">⟳</button>
-                            <span style="font-size:12px; color:var(--text-2); margin-left:6px;">Y: ${offY}</span>
-                        </div>
-                    </div>
-                `;
-            } else if (S.editingElement === 'directorAddr') {
-                const offY = ds.directorAddrOffsetY || 0;
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover vertical:</label>
-                        <div class="move-btn-group">
-                            <button onclick="updateDirectorAddrOffset(-2)" title="Arriba">↑</button>
-                            <button onclick="updateDirectorAddrOffset(2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetDirectorAddrOffset()" title="Centrar (0)">⟳</button>
-                            <span style="font-size:12px; color:var(--text-2); margin-left:6px;">Y: ${offY}</span>
                         </div>
                     </div>
                 `;
