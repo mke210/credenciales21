@@ -1342,7 +1342,9 @@
             directorInfo: { fontFamily: 'Arial', fontSize: 8, color: '#475569', align: 'center', bold: false,
                 bgColor: 'transparent', textShadow: 'none' },
             directorAddr: { fontFamily: 'Arial', fontSize: 7, color: '#64748b', align: 'center', bold: false,
-                bgColor: 'transparent', textShadow: 'none' }
+                bgColor: 'transparent', textShadow: 'none' },
+            idLabel: { fontFamily: 'Arial', fontSize: 6, color: N, align: 'center', bold: true, bgColor: 'transparent',
+                textShadow: 'none' }
         };
 
         const S = {
@@ -1359,6 +1361,8 @@
                 bgFit: 'cover',
                 signatureSpace: 0,
                 logoScale: 100,
+                photoScale: 100,
+                qrScale: 100,
                 logoOffset: { x: 0, y: 0 },
                 photoOffset: { x: 0, y: 0 },
                 qrOffset: { x: 0, y: 0 },
@@ -1394,6 +1398,8 @@
             if (S.designStyles.directorInfoOffsetY === undefined) S.designStyles.directorInfoOffsetY = 0;
             if (S.designStyles.directorAddrOffsetY === undefined) S.designStyles.directorAddrOffsetY = 0;
             if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
+            if (S.designStyles.photoScale === undefined) S.designStyles.photoScale = 100;
+            if (S.designStyles.qrScale === undefined) S.designStyles.qrScale = 100;
             if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
                     right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
             if (S.designStyles.signatureSpace === undefined) S.designStyles.signatureSpace = 0;
@@ -1524,21 +1530,26 @@
             const dAddrOffY = ds.directorAddrOffsetY || 0;
             const logoScale = (ds.logoScale || 100) / 100;
             const logoSize = 36 * logoScale;
+            const photoScale = (ds.photoScale || 100) / 100;
+            const qrScale = (ds.qrScale || 100) / 100;
 
             // Escudo: siempre círculo azul con borde dorado
             const logoEl = logo ?
                 `<div style="transform:translate(${lo.x}px,${lo.y}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0;"><img src="${logo}" style="width:100%;height:100%;border-radius:50%;object-fit:contain;border:3px solid ${N};background:white;padding:2px;"></div>` :
                 `<div style="transform:translate(${lo.x}px,${lo.y}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0; border-radius:50%; background:${N}; display:flex; align-items:center; justify-content:center; color:white; font-size:${fs(logoSize*0.3)}px; font-weight:800; border:3px solid ${N};">${(cfg.clave||'ESC').slice(0,3).toUpperCase()}</div>`;
 
+            const photoW = 80 * photoScale, photoH = 100 * photoScale;
             const photoBox = st?.foto ?
-                `<div style="transform:translate(${po.x}px,${po.y}px); position:relative; width:${fs(80)}px; height:${fs(100)}px; border:3px solid ${N}; border-radius:${fs(6)}px; flex-shrink:0; overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` :
-                `<div style="transform:translate(${po.x}px,${po.y}px); position:relative; width:${fs(80)}px; height:${fs(100)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(36)}px; color:#cbd5e1;">👤</span></div>`;
+                `<div style="transform:translate(${po.x}px,${po.y}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; border-radius:${fs(6)}px; flex-shrink:0; overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` :
+                `<div style="transform:translate(${po.x}px,${po.y}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(36*photoScale)}px; color:#cbd5e1;">👤</span></div>`;
 
+            const qrSize = 60 * qrScale;
+            const idStyle = stl(ds.idLabel);
             const qrContainer =
                 `
                 <div style="transform:translate(${qo.x}px,${qo.y}px); position:relative; display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px;">
-                    <div id="qr-${st?.id||'preview'}" style="width:${fs(60)}px; height:${fs(60)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
-                    <div style="font-size:${fs(6)}px; font-weight:800; color:${N}; background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
+                    <div id="qr-${st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
+                    <div style="${idStyle} background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
                 </div>
             `;
 
@@ -1681,6 +1692,16 @@
             refreshPreview();
             renderDesign(); }
 
+        function updatePhotoScale(val) { S.designStyles.photoScale = Math.max(50, Math.min(150, parseInt(val) || 100));
+            saveDS();
+            refreshPreview();
+            renderDesign(); }
+
+        function updateQrScale(val) { S.designStyles.qrScale = Math.max(50, Math.min(150, parseInt(val) || 100));
+            saveDS();
+            refreshPreview();
+            renderDesign(); }
+
         // Funciones para offsets generales
         function getOffset(element) { const key = element + 'Offset'; if (!S.designStyles[key]) S.designStyles[key] = { x: 0,
                 y: 0 }; return S.designStyles[key]; }
@@ -1771,8 +1792,10 @@
                 cur = ds[S.editingElement] || {},
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
             const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT/Ciclo', studentName: 'Alumno',
+                photo: 'Foto', qr: 'QR', idLabel: 'ID',
                 dataLabel: 'Etiquetas', dataValue: 'Valores', backTitle: 'Título rev.', backField: 'Campos rev.',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
+            const isImageElement = S.editingElement === 'photo' || S.editingElement === 'qr';
 
             let extraControls = '';
             if (S.editingElement === 'schoolName') {
@@ -1901,6 +1924,18 @@
                         <select onchange="changeEditingElement(this.value)" style="width:100%; margin-bottom:12px;">
                             ${Object.entries(names).map(([k,v])=>`<option value="${k}" ${S.editingElement===k?'selected':''}>${v}</option>`).join('')}
                         </select>
+                        ${isImageElement ? `
+                        <div class="inline-style-bar">
+                            <label>Tamaño de ${S.editingElement==='photo'?'la foto':'QR + ID'}</label>
+                            <div class="size-control">
+                                <button onclick="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}((${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}) - 5)">−</button>
+                                <input type="number" value="${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}" min="50" max="150" style="width:55px;text-align:center;" onchange="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}(this.value)">
+                                <button onclick="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}((${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}) + 5)">+</button>
+                            </div>
+                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original)</span>
+                        </div>
+                        ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Para cambiar el color/tamaño del texto "ID: ..." selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
+                        ` : `
                         <div class="inline-style-bar">
                             <label>Fuente</label><select onchange="updateStyle('fontFamily',this.value)"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select>
                             <div class="size-control">
@@ -1928,6 +1963,7 @@
                                 <option value="0 0 4px #C4922A" ${cur.textShadow==='0 0 4px #C4922A'?'selected':''}>Dorada</option>
                             </select>
                         </div>
+                        `}
                         ${extraControls}
                     </div>
                 `,
