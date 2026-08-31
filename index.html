@@ -871,6 +871,8 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 6px 10px;
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
         }
@@ -880,6 +882,7 @@
         .pos-controls {
             display: flex;
             align-items: center;
+            flex-wrap: wrap;
             gap: 6px;
         }
         .pos-controls button {
@@ -1383,8 +1386,14 @@
                 textShadow: 'none' },
             dataLabel: { fontFamily: 'Arial', fontSize: 7, color: '#64748b', align: 'left', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
-            dataValue: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true, bgColor: 'transparent',
-                textShadow: 'none' },
+            dataValueGrado: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
+                bgColor: 'transparent', textShadow: 'none' },
+            dataValueGrupo: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
+                bgColor: 'transparent', textShadow: 'none' },
+            dataValueTurno: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
+                bgColor: 'transparent', textShadow: 'none' },
+            dataValueVigencia: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
+                bgColor: 'transparent', textShadow: 'none' },
             backTitle: { fontFamily: 'Arial', fontSize: 9, color: '#ffffff', align: 'center', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
             backField: { fontFamily: 'Arial', fontSize: 8, color: '#1e293b', align: 'left', bold: false,
@@ -1445,6 +1454,7 @@
                 directorAddrOffset: { x: 0, y: 0 }
             },
             editId: null,
+            undoStack: [],
             editingElement: 'schoolName',
             marginSide: 'front',
             activeTab: 'logobg',
@@ -1556,6 +1566,13 @@
 
         // Funciones de carga y guardado
         function normalizeDesignStyles() {
+            // Migración: antes "Valores" (Grado/Grupo/Turno/Vigencia) compartían un solo estilo;
+            // ahora cada uno es independiente. Si existe el estilo viejo, se usa como punto de
+            // partida para los 4 nuevos, para no perder la personalización ya hecha.
+            if (S.designStyles.dataValue && !S.designStyles.dataValueGrado) {
+                ['Grado', 'Grupo', 'Turno', 'Vigencia'].forEach(k => { S.designStyles['dataValue' + k] = { ...S
+                    .designStyles.dataValue }; });
+            }
             Object.keys(defaultStyles).forEach(key => {
                 if (!S.designStyles[key]) S.designStyles[key] = { ...defaultStyles[key] };
                 else {
@@ -1657,6 +1674,7 @@
                     } catch (e) {}
                 }
                 normalizeDesignStyles();
+                lastSavedDesignStyles = JSON.stringify(S.designStyles);
                 refreshActivePage();
             });
 
@@ -1697,9 +1715,41 @@
             db.ref('configuracion/credenciales').set(S.config).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
             try { localStorage.setItem('cred_cfg', JSON.stringify(S.config)); } catch (e) {} }
 
+        // --- Deshacer cambios de Diseño ---
+        // Antes de guardar un cambio nuevo, se guarda una "foto" del estado anterior en una pila.
+        // Los cambios muy seguidos (arrastrar un control deslizante) se agrupan en un solo paso
+        // para que "Deshacer" no obligue a hacer clic decenas de veces.
+        let lastSavedDesignStyles = null;
+        let lastUndoSnapshotTime = 0;
+        const UNDO_MAX = 20;
+
         function saveDS() {
-            db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
-            try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {} }
+            if (lastSavedDesignStyles !== null) {
+                const now = Date.now();
+                if (now - lastUndoSnapshotTime >= 500 || !S.undoStack.length) {
+                    S.undoStack.push(lastSavedDesignStyles);
+                    if (S.undoStack.length > UNDO_MAX) S.undoStack.shift();
+                    lastUndoSnapshotTime = now;
+                }
+            }
+            lastSavedDesignStyles = JSON.stringify(S.designStyles);
+            db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast(
+                'No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {}
+        }
+
+        function undoDesign() {
+            if (!S.undoStack || !S.undoStack.length) { toast('No hay cambios que deshacer', 'err'); return; }
+            const prev = S.undoStack.pop();
+            S.designStyles = JSON.parse(prev);
+            lastSavedDesignStyles = prev;
+            db.ref('configuracion/credenciales/designStyles').set(S.designStyles)
+                .catch(err => toast('No se pudo deshacer: ' + err.message, 'err'));
+            try { localStorage.setItem('cred_ds', prev); } catch (e) {}
+            refreshPreview();
+            renderDesign();
+            toast('Cambio deshecho');
+        }
 
         function nav(pg) {
             const u = S.currentUser;
@@ -1764,7 +1814,6 @@
             const infoOff = ds.infoLineOffset || { x: 0, y: 0 };
             const stuOff = ds.studentNameOffset || { x: 0, y: 0 };
             const dLblOff = ds.dataLabelOffset || { x: 0, y: 0 };
-            const dValOff = ds.dataValueOffset || { x: 0, y: 0 };
             const divOff = ds.dataDividerOffset || { x: 0, y: 0 };
             const bTitleOff = ds.backTitleOffset || { x: 0, y: 0 };
             const bFieldOff = ds.backFieldOffset || { x: 0, y: 0 };
@@ -1850,7 +1899,11 @@
                 </div>
                 <div style="${stl(ds.studentName)} transform:translate(${stuOff.x}px,${stuOff.y}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
-                    ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${divOff.x}px,${divOff.y}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)} transform:translate(${dValOff.x}px,${dValOff.y}px);">${v}</div></div>`).join('')}
+                    ${[['GRADO','Grado',st?.grado?st.grado+'°':'—'],['GRUPO','Grupo',st?.grupo||'—'],['TURNO','Turno',st?.turno||'—'],['VIGENCIA','Vigencia',st?.vigencia||'—']].map(([l,k,v])=>{
+                        const valKey = 'dataValue'+k;
+                        const vOff = ds[valKey+'Offset'] || { x: 0, y: 0 };
+                        return `<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${divOff.x}px,${divOff.y}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds[valKey])} transform:translate(${vOff.x}px,${vOff.y}px);">${v}</div></div>`;
+                    }).join('')}
                 </div>
                 ${selloEl}`;
 
@@ -1991,7 +2044,8 @@
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
             const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT/Ciclo', studentName: 'Alumno',
                 photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
-                dataLabel: 'Etiquetas', dataValue: 'Valores', dataDivider: 'Líneas divisoras',
+                dataLabel: 'Etiquetas', dataValueGrado: 'Valor: Grado', dataValueGrupo: 'Valor: Grupo',
+                dataValueTurno: 'Valor: Turno', dataValueVigencia: 'Valor: Vigencia', dataDivider: 'Líneas divisoras',
                 backTitle: 'Título rev.', backField: 'Campos rev.',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
             const isImageElement = ['photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
@@ -2144,7 +2198,8 @@
                             </div>
                         </div>
                         <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
-                            <label>Color de fondo</label><input type="color" value="${cur.bgColor||'transparent'}" style="width:36px;height:30px;" onchange="updateStyle('bgColor',this.value)">
+                            <label>Color de fondo</label><input type="color" value="${(cur.bgColor&&cur.bgColor!=='transparent')?cur.bgColor:'#ffffff'}" style="width:36px;height:30px;" onchange="updateStyle('bgColor',this.value)">
+                            <button class="btn btn-out btn-sm" onclick="updateStyle('bgColor','transparent')" title="Quitar el color de fondo" ${(!cur.bgColor||cur.bgColor==='transparent')?'disabled':''}>✕ Quitar fondo</button>
                             <label style="margin-left:8px;">Sombra</label>
                             <select onchange="updateStyle('textShadow',this.value)" style="width:120px;">
                                 <option value="none" ${cur.textShadow==='none'?'selected':''}>Ninguna</option>
@@ -2219,7 +2274,7 @@
             };
 
             document.getElementById('designPage').innerHTML = `
-                <div class="pg-hdr"><div><div class="pg-ttl">Diseño</div></div></div>
+                <div class="pg-hdr"><div><div class="pg-ttl">Diseño</div></div><button class="btn btn-out btn-sm" onclick="undoDesign()" ${!S.undoStack.length?'disabled':''} title="Deshacer el último cambio">↶ Deshacer</button></div>
                 <div class="design-tabs">
                     <div class="design-tab ${S.activeTab==='logobg'?'active':''}" onclick="switchTab('logobg')">Logo y fondo</div>
                     <div class="design-tab ${S.activeTab==='style'?'active':''}" onclick="switchTab('style')">Estilos</div>
