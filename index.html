@@ -1291,6 +1291,8 @@
     <div id="toasts"></div>
     <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoFile(this)">
     <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="handleBgFile(this)">
+    <input type="file" id="selloInput" accept="image/*" style="display:none" onchange="handleSelloFile(this)">
+    <input type="file" id="firmaInput" accept="image/*" style="display:none" onchange="handleFirmaFile(this)">
     <input type="file" id="fotoFileInput" accept="image/*" style="display:none" onchange="handleFotoFile(this)">
     <input type="file" id="importInput" accept=".json" style="display:none" onchange="handleImportFile(this)">
 
@@ -1349,6 +1351,15 @@
         // Dominio ficticio: Firebase Auth requiere un correo, así que el "usuario" que
         // escribe la persona se convierte internamente en usuario@credenciales.local
         const AUTH_DOMAIN_SUFFIX = '@credenciales.local';
+
+        // Convierte el nombre de usuario a un correo válido para Firebase Auth: quita acentos
+        // (á,é,í,ó,ú), la ñ, espacios y cualquier símbolo que un correo no admite.
+        function usernameToEmail(usuario) {
+            const clean = (usuario || '').toString().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+                .replace(/[^a-z0-9._-]/g, '');
+            return clean + AUTH_DOMAIN_SUFFIX;
+        }
         let firebaseOnline = false;
         db.ref('.info/connected').on('value', snap => {
             firebaseOnline = snap.val() === true;
@@ -1393,6 +1404,8 @@
             subtitulo: '' },
             logo: DEFAULT_LOGO,
             bgImage: DEFAULT_BG,
+            sello: '',
+            firma: '',
             designStyles: {
                 ...defaultStyles,
                 margins: { front: { top: 0, bottom: 0, left: 0, right: 0 }, back: { top: 0, bottom: 0, left: 0,
@@ -1403,9 +1416,13 @@
                 logoScale: 100,
                 photoScale: 100,
                 qrScale: 100,
+                sealScale: 100,
+                firmaScale: 100,
                 logoOffset: { x: 0, y: 0 },
                 photoOffset: { x: 0, y: 0 },
                 qrOffset: { x: 0, y: 0 },
+                sealOffset: { x: 0, y: 0 },
+                firmaOffset: { x: 0, y: 0 },
                 schoolNameOffset: { x: 0, y: 0 },
                 subtitleOffset: { x: 0, y: 0 },
                 infoLineOffset: { x: 0, y: 0 },
@@ -1479,7 +1496,7 @@
 
             if (btn) { btn.disabled = true;
                 btn.textContent = 'Entrando...'; }
-            const email = usuario.toLowerCase().replace(/\s+/g, '') + AUTH_DOMAIN_SUFFIX;
+            const email = usernameToEmail(usuario);
             auth.signInWithEmailAndPassword(email, password)
                 .then(cred => {
                     return db.ref('usuarios/' + cred.user.uid).once('value').then(snap => {
@@ -1542,6 +1559,8 @@
             if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
             if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
             if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
+            if (!S.designStyles.sealOffset) S.designStyles.sealOffset = { x: 0, y: 0 };
+            if (!S.designStyles.firmaOffset) S.designStyles.firmaOffset = { x: 0, y: 0 };
             if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0, y: 0 };
             if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
             if (!S.designStyles.infoLineOffset) S.designStyles.infoLineOffset = { x: 0, y: 0 };
@@ -1559,6 +1578,8 @@
             if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
             if (S.designStyles.photoScale === undefined) S.designStyles.photoScale = 100;
             if (S.designStyles.qrScale === undefined) S.designStyles.qrScale = 100;
+            if (S.designStyles.sealScale === undefined) S.designStyles.sealScale = 100;
+            if (S.designStyles.firmaScale === undefined) S.designStyles.firmaScale = 100;
             if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
                     right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
             if (S.designStyles.signatureSpace === undefined) S.designStyles.signatureSpace = 0;
@@ -1610,6 +1631,10 @@
                 }
                 refreshActivePage();
             });
+            db.ref('configuracion/credenciales/sello').on('value', snap => { S.sello = snap.val() || '';
+                refreshActivePage(); });
+            db.ref('configuracion/credenciales/firma').on('value', snap => { S.firma = snap.val() || '';
+                refreshActivePage(); });
             db.ref('configuracion/credenciales/designStyles').on('value', snap => {
                 if (snap.val()) {
                     S.designStyles = snap.val();
@@ -1739,6 +1764,12 @@
             const logoSize = 36 * logoScale;
             const photoScale = (ds.photoScale || 100) / 100;
             const qrScale = (ds.qrScale || 100) / 100;
+            const sealScale = (ds.sealScale || 100) / 100;
+            const firmaScale = (ds.firmaScale || 100) / 100;
+            const sealOff = ds.sealOffset || { x: 0, y: 0 };
+            const firmaOff = ds.firmaOffset || { x: 0, y: 0 };
+            const sello = S.sello,
+                firma = S.firma;
 
             // Escudo: siempre círculo azul con borde dorado
             const logoEl = logo ?
@@ -1764,6 +1795,17 @@
             const subtitulo = cfg.subtitulo || '';
             const line1 = nombreEscuela;
             const line2 = subtitulo;
+
+            const selloSize = 56 * sealScale;
+            const selloEl = sello ?
+                `<div style="position:absolute; right:${fs(6)}px; bottom:${fs(6)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${sealOff.x}px,${sealOff.y}px); opacity:.85; z-index:3;"><img src="${sello}" style="width:100%;height:100%;object-fit:contain;"></div>` :
+                `<div style="position:absolute; right:${fs(6)}px; bottom:${fs(6)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${sealOff.x}px,${sealOff.y}px); border:1.5px dashed #cbd5e1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:${fs(8)}px; color:#cbd5e1; text-align:center; z-index:3;">Sello</div>`;
+
+            const firmaW = 74 * firmaScale,
+                firmaH = 32 * firmaScale;
+            const firmaEl = firma ?
+                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px);"><img src="${firma}" style="width:100%;height:100%;object-fit:contain;"></div>` :
+                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px); border-bottom:1px dashed #94a3b8; display:flex; align-items:flex-end; justify-content:center; font-size:${fs(7)}px; color:#94a3b8; padding-bottom:2px;">Firma</div>`;
 
             const schoolNameStyle = stl(ds.schoolName);
             const subtitleStyle = stl(ds.subtitle);
@@ -1792,7 +1834,8 @@
                 <div style="${stl(ds.studentName)} transform:translate(${stuOff.x}px,${stuOff.y}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
                     ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${divOff.x}px,${divOff.y}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)} transform:translate(${dValOff.x}px,${dValOff.y}px);">${v}</div></div>`).join('')}
-                </div>`;
+                </div>
+                ${selloEl}`;
 
             // Reverso con fondo azul y texto blanco asegurado en impresión
             const back = `
@@ -1807,6 +1850,7 @@
                     <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Alergias</div><div style="${stl(ds.backField)}">${escH(st?.alergias)||'Ninguna'}</div></div>
                 </div>
                 <div style="border-top:2px solid ${G}; padding-top:${fs(2)}px; margin-top:${fs(ds.signatureSpace||0)}px; text-align:center;">
+                    ${firmaEl}
                     <div style="transform:translate(${dNameOff.x}px,${dNameOff.y}px); ${stl(ds.directorName)}">${escH(cfg.director)||'Director'}</div>
                     <div style="transform:translate(${dInfoOff.x}px,${dInfoOff.y}px); ${stl(ds.directorInfo)} margin:${fs(2)}px 0;">${escH(cfg.cargo)||'Director(a)'}</div>
                     <div style="transform:translate(${dAddrOff.x}px,${dAddrOff.y}px); ${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
@@ -1929,11 +1973,11 @@
                 cur = ds[S.editingElement] || {},
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
             const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT/Ciclo', studentName: 'Alumno',
-                photo: 'Foto', qr: 'QR', idLabel: 'ID',
+                photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
                 dataLabel: 'Etiquetas', dataValue: 'Valores', dataDivider: 'Líneas divisoras',
                 backTitle: 'Título rev.', backField: 'Campos rev.',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
-            const isImageElement = S.editingElement === 'photo' || S.editingElement === 'qr';
+            const isImageElement = ['photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
             const isColorOnlyElement = S.editingElement === 'dataDivider';
 
             let extraControls = '';
@@ -1987,6 +2031,38 @@
                         <div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div>
                         ` : '<div style="color:var(--text-3); font-size:13px;">Sin fondo personalizado</div>'}
                     </div>
+                    <div class="card">
+                        <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Sello (frente)</div></div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            ${S.sello ? `<img class="logo-preview-sm" src="${S.sello}">` : '<div class="logo-preview-sm" style="display:flex; align-items:center; justify-content:center; font-size:18px; color:#94a3b8;">🔖</div>'}
+                            <div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('selloInput').click()">${S.sello?'Cambiar':'Subir'}</button>
+                                ${S.sello ? '<button class="btn btn-err btn-sm" onclick="removeSello()">Eliminar</button>' : ''}
+                            </div>
+                            <div style="margin-left:10px; display:flex; align-items:center; gap:6px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-2);">Escala:</label>
+                                <input type="range" min="50" max="150" value="${ds.sealScale||100}" oninput="updateSealScale(this.value)" style="width:80px;">
+                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.sealScale||100}%</span>
+                            </div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el frente de la credencial. Usa la pestaña Posiciones para moverlo.</div>
+                    </div>
+                    <div class="card">
+                        <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Firma (reverso)</div></div>
+                        <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                            ${S.firma ? `<img class="logo-preview-sm" src="${S.firma}">` : '<div class="logo-preview-sm" style="display:flex; align-items:center; justify-content:center; font-size:18px; color:#94a3b8;">✍️</div>'}
+                            <div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('firmaInput').click()">${S.firma?'Cambiar':'Subir'}</button>
+                                ${S.firma ? '<button class="btn btn-err btn-sm" onclick="removeFirma()">Eliminar</button>' : ''}
+                            </div>
+                            <div style="margin-left:10px; display:flex; align-items:center; gap:6px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-2);">Escala:</label>
+                                <input type="range" min="50" max="150" value="${ds.firmaScale||100}" oninput="updateFirmaScale(this.value)" style="width:80px;">
+                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.firmaScale||100}%</span>
+                            </div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el reverso, junto a los datos del director. Usa la pestaña Posiciones para moverla.</div>
+                    </div>
                 `,
                 style: `
                     <div class="card">
@@ -1994,18 +2070,28 @@
                         <select onchange="changeEditingElement(this.value)" style="width:100%; margin-bottom:12px;">
                             ${Object.entries(names).map(([k,v])=>`<option value="${k}" ${S.editingElement===k?'selected':''}>${v}</option>`).join('')}
                         </select>
-                        ${isImageElement ? `
+                        ${isImageElement ? (() => {
+                            const cfgMap = {
+                                photo: { label: 'la foto', scaleKey: 'photoScale', fn: 'updatePhotoScale' },
+                                qr: { label: 'QR + ID', scaleKey: 'qrScale', fn: 'updateQrScale' },
+                                sello: { label: 'el sello', scaleKey: 'sealScale', fn: 'updateSealScale' },
+                                firma: { label: 'la firma', scaleKey: 'firmaScale', fn: 'updateFirmaScale' }
+                            };
+                            const c = cfgMap[S.editingElement];
+                            const val = ds[c.scaleKey] || 100;
+                            return `
                         <div class="inline-style-bar">
-                            <label>Tamaño de ${S.editingElement==='photo'?'la foto':'QR + ID'}</label>
+                            <label>Tamaño de ${c.label}</label>
                             <div class="size-control">
-                                <button onclick="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}((${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}) - 5)">−</button>
-                                <input type="number" value="${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}" min="50" max="150" style="width:55px;text-align:center;" onchange="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}(this.value)">
-                                <button onclick="${S.editingElement==='photo'?'updatePhotoScale':'updateQrScale'}((${S.editingElement==='photo'?(ds.photoScale||100):(ds.qrScale||100)}) + 5)">+</button>
+                                <button onclick="${c.fn}((${val}) - 5)">−</button>
+                                <input type="number" value="${val}" min="50" max="150" style="width:55px;text-align:center;" onchange="${c.fn}(this.value)">
+                                <button onclick="${c.fn}((${val}) + 5)">+</button>
                             </div>
                             <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original)</span>
                         </div>
                         ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Para cambiar el color/tamaño del texto "ID: ..." selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
-                        ` : isColorOnlyElement ? `
+                            `;
+                        })() : isColorOnlyElement ? `
                         <div class="inline-style-bar">
                             <label>Color de las líneas</label><input type="color" value="${ds.dataDivider?.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
                         </div>
@@ -2061,10 +2147,10 @@
                 positions: `
                     <div class="card">
                         <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Posicionar elementos</div></div>
-                        <p style="font-size:12px; color:var(--text-2); margin-bottom:12px;">Ajusta la posición de cada elemento en el frente de la credencial. Cada flecha mueve 2 píxeles.</p>
-                        ${['logo','photo','qr'].map(el => {
+                        <p style="font-size:12px; color:var(--text-2); margin-bottom:12px;">Ajusta la posición de cada elemento (Escudo, Foto, QR y Sello están en el frente; la Firma está en el reverso). Cada flecha mueve 2 píxeles.</p>
+                        ${['logo','photo','qr','sello','firma'].map(el => {
                             const off = getOffset(el);
-                            const label = el==='logo'?'Escudo':el==='photo'?'Foto':'QR + ID';
+                            const label = el==='logo'?'Escudo':el==='photo'?'Foto':el==='qr'?'QR + ID':el==='sello'?'Sello (frente)':'Firma (reverso)';
                             return `
                             <div class="pos-item">
                                 <span class="pos-label">${label}</span>
@@ -2426,7 +2512,9 @@
             const exists = Object.values(S.usuarios || {}).some(u => u.usuario.toLowerCase() === usuario
                 .toLowerCase());
             if (exists) { toast('Ese usuario ya existe', 'err'); return; }
-            const email = usuario.toLowerCase().replace(/\s+/g, '') + AUTH_DOMAIN_SUFFIX;
+            const email = usernameToEmail(usuario);
+            if (email === AUTH_DOMAIN_SUFFIX) { toast(
+                'Ese nombre de usuario no es válido, usa solo letras, números, puntos o guiones', 'err'); return; }
             secondaryAuth.createUserWithEmailAndPassword(email, password)
                 .then(cred => {
                     const uid = cred.user.uid;
@@ -2565,6 +2653,55 @@
             db.ref('configuracion/credenciales/bgImage').set('')
                 .catch(err => toast('No se pudo quitar el fondo: ' + err.message, 'err'));
             try { localStorage.setItem('cred_bg', ''); } catch (e) {}
+            renderDesign(); }
+
+        function handleSelloFile(inp) {
+            const f = inp.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { toast('Solo imágenes', 'err'); return; }
+            const r = new FileReader();
+            r.onload = ev => { S.sello = ev.target.result;
+                db.ref('configuracion/credenciales/sello').set(S.sello)
+                    .then(() => toast('Sello guardado'))
+                    .catch(err => toast('No se pudo guardar el sello: ' + err.message, 'err'));
+                renderDesign(); };
+            r.readAsDataURL(f);
+            inp.value = '';
+        }
+
+        function removeSello() { S.sello = '';
+            db.ref('configuracion/credenciales/sello').set('')
+                .catch(err => toast('No se pudo quitar el sello: ' + err.message, 'err'));
+            renderDesign(); }
+
+        function handleFirmaFile(inp) {
+            const f = inp.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { toast('Solo imágenes', 'err'); return; }
+            const r = new FileReader();
+            r.onload = ev => { S.firma = ev.target.result;
+                db.ref('configuracion/credenciales/firma').set(S.firma)
+                    .then(() => toast('Firma guardada'))
+                    .catch(err => toast('No se pudo guardar la firma: ' + err.message, 'err'));
+                renderDesign(); };
+            r.readAsDataURL(f);
+            inp.value = '';
+        }
+
+        function removeFirma() { S.firma = '';
+            db.ref('configuracion/credenciales/firma').set('')
+                .catch(err => toast('No se pudo quitar la firma: ' + err.message, 'err'));
+            renderDesign(); }
+
+        function updateSealScale(val) { S.designStyles.sealScale = Math.max(50, Math.min(150, parseInt(val) || 100));
+            saveDS();
+            refreshPreview();
+            renderDesign(); }
+
+        function updateFirmaScale(val) { S.designStyles.firmaScale = Math.max(50, Math.min(150, parseInt(val) ||
+            100));
+            saveDS();
+            refreshPreview();
             renderDesign(); }
 
         // --- Funciones de cámara y foto (sin cambios) ---
