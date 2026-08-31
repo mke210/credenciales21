@@ -1344,7 +1344,8 @@
             directorAddr: { fontFamily: 'Arial', fontSize: 7, color: '#64748b', align: 'center', bold: false,
                 bgColor: 'transparent', textShadow: 'none' },
             idLabel: { fontFamily: 'Arial', fontSize: 6, color: N, align: 'center', bold: true, bgColor: 'transparent',
-                textShadow: 'none' }
+                textShadow: 'none' },
+            dataDivider: { color: N }
         };
 
         const S = {
@@ -1375,6 +1376,7 @@
                 backTitleOffset: { x: 0, y: 0 },
                 backFieldOffset: { x: 0, y: 0 },
                 idLabelOffset: { x: 0, y: 0 },
+                dataDividerOffset: { x: 0, y: 0 },
                 directorNameOffset: { x: 0, y: 0 },
                 directorInfoOffset: { x: 0, y: 0 },
                 directorAddrOffset: { x: 0, y: 0 }
@@ -1406,6 +1408,7 @@
             if (!S.designStyles.backTitleOffset) S.designStyles.backTitleOffset = { x: 0, y: 0 };
             if (!S.designStyles.backFieldOffset) S.designStyles.backFieldOffset = { x: 0, y: 0 };
             if (!S.designStyles.idLabelOffset) S.designStyles.idLabelOffset = { x: 0, y: 0 };
+            if (!S.designStyles.dataDividerOffset) S.designStyles.dataDividerOffset = { x: 0, y: 0 };
             // Migración: los directores usaban un offset vertical simple; ahora usan X/Y como el resto de los campos
             if (!S.designStyles.directorNameOffset) S.designStyles.directorNameOffset = { x: 0, y: S.designStyles.directorNameOffsetY || 0 };
             if (!S.designStyles.directorInfoOffset) S.designStyles.directorInfoOffset = { x: 0, y: S.designStyles.directorInfoOffsetY || 0 };
@@ -1541,6 +1544,7 @@
             const stuOff = ds.studentNameOffset || { x: 0, y: 0 };
             const dLblOff = ds.dataLabelOffset || { x: 0, y: 0 };
             const dValOff = ds.dataValueOffset || { x: 0, y: 0 };
+            const divOff = ds.dataDividerOffset || { x: 0, y: 0 };
             const bTitleOff = ds.backTitleOffset || { x: 0, y: 0 };
             const bFieldOff = ds.backFieldOffset || { x: 0, y: 0 };
             const idOff = ds.idLabelOffset || { x: 0, y: 0 };
@@ -1603,7 +1607,7 @@
                 </div>
                 <div style="${stl(ds.studentName)} transform:translate(${stuOff.x}px,${stuOff.y}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
-                    ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="border-left:3px solid ${N}; padding:${fs(2)}px ${fs(4)}px;"><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)} transform:translate(${dValOff.x}px,${dValOff.y}px);">${v}</div></div>`).join('')}
+                    ${[['GRADO',st?.grado?st.grado+'°':'—'],['GRUPO',st?.grupo||'—'],['TURNO',st?.turno||'—'],['VIGENCIA',st?.vigencia||'—']].map(([l,v])=>`<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${divOff.x}px,${divOff.y}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${dLblOff.x}px,${dLblOff.y}px); text-transform:uppercase;">${l}</div><div style="${stl(ds.dataValue)} transform:translate(${dValOff.x}px,${dValOff.y}px);">${v}</div></div>`).join('')}
                 </div>`;
 
             // Reverso con fondo azul y texto blanco asegurado en impresión
@@ -1742,9 +1746,11 @@
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
             const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT/Ciclo', studentName: 'Alumno',
                 photo: 'Foto', qr: 'QR', idLabel: 'ID',
-                dataLabel: 'Etiquetas', dataValue: 'Valores', backTitle: 'Título rev.', backField: 'Campos rev.',
+                dataLabel: 'Etiquetas', dataValue: 'Valores', dataDivider: 'Líneas divisoras',
+                backTitle: 'Título rev.', backField: 'Campos rev.',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
             const isImageElement = S.editingElement === 'photo' || S.editingElement === 'qr';
+            const isColorOnlyElement = S.editingElement === 'dataDivider';
 
             let extraControls = '';
             if (!isImageElement) {
@@ -1815,6 +1821,10 @@
                             <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original)</span>
                         </div>
                         ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Para cambiar el color/tamaño del texto "ID: ..." selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
+                        ` : isColorOnlyElement ? `
+                        <div class="inline-style-bar">
+                            <label>Color de las líneas</label><input type="color" value="${ds.dataDivider?.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
+                        </div>
                         ` : `
                         <div class="inline-style-bar">
                             <label>Fuente</label><select onchange="updateStyle('fontFamily',this.value)"><option>Arial</option><option>Times New Roman</option><option>Courier New</option><option>Georgia</option></select>
@@ -2413,8 +2423,19 @@
                 `<div>${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'back')}</div>`;
             const w = window.open('', '_blank', 'width=900,height=700');
             if (!w) { toast('Permite ventanas emergentes', 'err'); return; }
+            // Se copia el CSS real de la app (en vez de una copia aparte) para que la impresión
+            // luzca SIEMPRE igual a la vista previa de Diseño/Generar, sin importar qué cambie en el futuro.
+            const appCSS = Array.from(document.querySelectorAll('style')).map(el => el.textContent).join('\n');
+            const printExtra = `
+                body { font-family: Arial; background: #CBD5E1 !important; padding: 24px; display: flex; gap: 24px;
+                    justify-content: center; overflow: auto !important; height: auto !important; }
+                @media print {
+                    body { background: white !important; padding: 0; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+                }
+            `;
             w.document.write(
-                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credencial</title><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><style>body{font-family:Arial;background:#CBD5E1;padding:24px;display:flex;gap:24px;justify-content:center}@media print{body{background:white;padding:0}*{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;color-adjust:exact !important}}</style></head><body>${html}<script>document.querySelectorAll('[id^="qr-"]').forEach(el=>{if(!el.hasChildNodes()){try{new QRCode(el,{text:el.id.replace('qr-',''),width:60,height:60,colorDark:'#0B2D6B',colorLight:'#ffffff'})}catch(e){}}});setTimeout(()=>window.print(),800);<\/script></body></html>`
+                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credencial</title><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><style>${appCSS}\n${printExtra}</style></head><body>${html}<script>document.querySelectorAll('[id^="qr-"]').forEach(el=>{if(!el.hasChildNodes()){try{new QRCode(el,{text:el.id.replace('qr-',''),width:60,height:60,colorDark:'#0B2D6B',colorLight:'#ffffff'})}catch(e){}}});setTimeout(()=>window.print(),800);<\/script></body></html>`
                 );
             w.document.close();
         }
