@@ -1142,7 +1142,26 @@
     </style>
 </head>
 <body>
-    <div id="app">
+    <div id="loginScreen" style="position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#0B2D6B,#123a85);">
+        <form id="loginForm" onsubmit="return doLogin(event)" style="background:white;border-radius:16px;padding:36px 32px;width:100%;max-width:340px;box-shadow:0 20px 60px rgba(0,0,0,.35);">
+            <div style="text-align:center;margin-bottom:20px;">
+                <div style="width:56px;height:56px;border-radius:50%;background:#0B2D6B;color:white;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;margin:0 auto 10px;">C</div>
+                <div style="font-weight:800;font-size:1.1em;color:#0B2D6B;">Sistema de Credenciales</div>
+                <div style="font-size:.8em;color:#64748b;margin-top:2px;">Inicia sesión para continuar</div>
+            </div>
+            <div style="margin-bottom:12px;">
+                <label style="font-size:.75em;font-weight:600;color:#334155;display:block;margin-bottom:4px;">Usuario</label>
+                <input type="text" id="loginUser" class="input-modern" autocomplete="username" required>
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="font-size:.75em;font-weight:600;color:#334155;display:block;margin-bottom:4px;">Contraseña</label>
+                <input type="password" id="loginPass" class="input-modern" autocomplete="current-password" required>
+            </div>
+            <div id="loginError" style="display:none;color:#DC2626;font-size:.8em;margin-bottom:12px;text-align:center;"></div>
+            <button type="submit" class="btn btn-navy" style="width:100%;justify-content:center;">Entrar</button>
+        </form>
+    </div>
+    <div id="app" style="display:none;">
         <header id="hdr">
             <div class="hdr-logo" id="hdrLogo">C</div>
             <div class="hdr-info">
@@ -1151,6 +1170,8 @@
             </div>
             <div style="display:flex;align-items:center;gap:10px;">
                 <span class="fb-dot on" id="fbDot"></span>
+                <span id="userBadge" style="font-size:11px;color:rgba(255,255,255,.75);white-space:nowrap;"></span>
+                <button class="btn btn-out btn-sm" id="logoutBtn" onclick="doLogout()" style="padding:5px 10px;font-size:11px;">Salir</button>
                 <div class="hdr-pill" id="hdrPill">v7.5</div>
                 <span class="hdr-powered" style="font-size:10px;color:rgba(255,255,255,.4);white-space:nowrap;">Powered by <strong style="color:rgba(255,255,255,.65);font-weight:700;">elprofeChan</strong></span>
                 <button class="menu-toggle-btn" id="menuToggleBtn" onclick="toggleSidebar()" aria-label="Abrir/cerrar menú">☰</button>
@@ -1161,10 +1182,10 @@
             <div class="sb-section">
                 <span class="sb-lbl">Principal</span>
                 <div class="nav-item active" data-page="students"><div class="ni-icon">👥</div><span>Alumnos</span><span class="ni-badge" id="nbStudents">0</span></div>
-                <div class="nav-item" data-page="design"><div class="ni-icon">🎨</div><span>Diseño</span></div>
+                <div class="nav-item" data-page="design" id="navDesign"><div class="ni-icon">🎨</div><span>Diseño</span></div>
                 <div class="nav-item" data-page="generate"><div class="ni-icon">🖨️</div><span>Generar</span></div>
             </div>
-            <div class="sb-section"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
+            <div class="sb-section" id="sbSystemSection"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
             <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v7.5</div></div>
         </nav>
         <main id="main">
@@ -1384,8 +1405,93 @@
             editId: null,
             editingElement: 'schoolName',
             marginSide: 'front',
-            activeTab: 'logobg'
+            activeTab: 'logobg',
+            usuarios: {},
+            currentUser: null
         };
+
+        const ADMIN_GENERAL = { usuario: 'admin', password: '182136' };
+
+        function getSession() {
+            try { return JSON.parse(localStorage.getItem('cred_session') || 'null'); } catch (e) { return null; }
+        }
+
+        function setSession(u) {
+            S.currentUser = u;
+            try { localStorage.setItem('cred_session', JSON.stringify(u)); } catch (e) {}
+        }
+
+        function clearSession() {
+            S.currentUser = null;
+            try { localStorage.removeItem('cred_session'); } catch (e) {}
+        }
+
+        function showApp() {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('app').style.display = 'grid';
+            applyRolePermissions();
+            nav('students');
+        }
+
+        function showLogin(msg) {
+            document.getElementById('app').style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'flex';
+            const f = document.getElementById('loginForm');
+            if (f) f.reset();
+            const errEl = document.getElementById('loginError');
+            if (msg) { errEl.textContent = msg;
+                errEl.style.display = 'block'; } else { errEl.style.display = 'none'; }
+        }
+
+        function doLogin(event) {
+            event.preventDefault();
+            const usuario = document.getElementById('loginUser').value.trim();
+            const password = document.getElementById('loginPass').value;
+            const errEl = document.getElementById('loginError');
+            errEl.style.display = 'none';
+
+            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase() && password === ADMIN_GENERAL
+                .password) {
+                setSession({ usuario: ADMIN_GENERAL.usuario, role: 'admin', canDesign: true, superAdmin: true });
+                showApp();
+                return false;
+            }
+
+            const entry = Object.entries(S.usuarios || {}).find(([k, u]) => u.usuario.toLowerCase() === usuario
+                .toLowerCase() && u.password === password);
+            if (!entry) {
+                errEl.textContent = 'Usuario o contraseña incorrectos';
+                errEl.style.display = 'block';
+                return false;
+            }
+            const [key, u] = entry;
+            if (u.active === false) {
+                errEl.textContent = 'Este usuario está desactivado. Contacta al administrador.';
+                errEl.style.display = 'block';
+                return false;
+            }
+            setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, superAdmin: false, key });
+            showApp();
+            return false;
+        }
+
+        function doLogout() {
+            clearSession();
+            showLogin();
+        }
+
+        // Aplica qué pestañas puede ver el usuario logueado según su rol/permisos
+        function applyRolePermissions() {
+            const u = S.currentUser;
+            if (!u) return;
+            const isAdmin = u.role === 'admin';
+            const navDesign = document.getElementById('navDesign');
+            const sbSystem = document.getElementById('sbSystemSection');
+            if (navDesign) navDesign.style.display = (isAdmin || u.canDesign) ? '' : 'none';
+            if (sbSystem) sbSystem.style.display = isAdmin ? '' : 'none';
+            const badge = document.getElementById('userBadge');
+            if (badge) badge.textContent = `${u.usuario} · ${isAdmin ? 'Administrador' : 'Secretario(a)'}`;
+        }
 
         // Funciones de carga y guardado
         function normalizeDesignStyles() {
@@ -1471,6 +1577,29 @@
             db.ref('alumnos').on('value', snap => { const data = snap.val(); if (data) { S.students = Object.values(
                     data);
                     renderStudents(); } });
+
+            // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
+            db.ref('usuarios').on('value', snap => {
+                S.usuarios = snap.val() || {};
+                // Si el usuario logueado (que no sea el admin general) fue eliminado o desactivado, se cierra su sesión
+                if (S.currentUser && !S.currentUser.superAdmin) {
+                    const stillExists = Object.values(S.usuarios).find(u => u.usuario === S.currentUser.usuario);
+                    if (!stillExists || stillExists.active === false) {
+                        clearSession();
+                        showLogin('Tu acceso fue revocado por un administrador.');
+                        return;
+                    }
+                    if (stillExists.role !== S.currentUser.role || !!stillExists.canDesign !== S.currentUser
+                        .canDesign) {
+                        S.currentUser.role = stillExists.role;
+                        S.currentUser.canDesign = !!stillExists.canDesign;
+                        try { localStorage.setItem('cred_session', JSON.stringify(S.currentUser)); } catch (e) {}
+                        applyRolePermissions();
+                    }
+                }
+                if (document.getElementById('app').style.display !== 'none' && document.querySelector(
+                        '.page.active')?.id === 'page-config') renderConfig();
+            });
         }
 
         function saveSt() { const obj = {}; S.students.forEach(s => obj[s.id] = s);
@@ -1486,6 +1615,11 @@
             try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {} }
 
         function nav(pg) {
+            const u = S.currentUser;
+            if (u && u.role !== 'admin') {
+                if (pg === 'design' && !u.canDesign) { toast('No tienes permiso para acceder a Diseño', 'err'); return; }
+                if (pg === 'config') { toast('No tienes permiso para acceder a Configuración', 'err'); return; }
+            }
             document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === pg));
             document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + pg));
             if (pg === 'students') renderStudents();
@@ -2188,8 +2322,82 @@
 
         function renderConfig() {
             const cfg = S.config;
+            const isAdmin = S.currentUser && S.currentUser.role === 'admin';
             document.getElementById('configPage').innerHTML =
-                `<div class="pg-hdr"><div><div class="pg-ttl">Configuración</div></div></div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Datos de la escuela</div><button class="btn btn-navy btn-sm" onclick="saveConfig()">💾 Guardar</button></div><div class="compact-form"><div class="compact-field" style="min-width:200px;"><label>Nombre</label><input type="text" id="c-nombre" value="${escH(cfg.nombre)}"></div><div class="compact-field" style="min-width:200px;"><label>Subtítulo (lema)</label><input type="text" id="c-subtitulo" value="${escH(cfg.subtitulo)}" placeholder="Ej: 21 de noviembre"></div><div class="compact-field" style="min-width:200px;"><label>Dirección</label><input type="text" id="c-direccion" value="${escH(cfg.direccion)}"></div><div class="compact-field"><label>CCT</label><input type="text" id="c-clave" value="${escH(cfg.clave)}"></div><div class="compact-field"><label>Ciclo</label><input type="text" id="c-ciclo" value="${escH(cfg.ciclo)}"></div><div class="compact-field"><label>Director(a)</label><input type="text" id="c-director" value="${escH(cfg.director)}"></div><div class="compact-field"><label>Cargo</label><input type="text" id="c-cargo" value="${escH(cfg.cargo)}"></div></div></div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Respaldo</div></div><div class="io-row"><button class="io-btn" onclick="doExport()">📤 Exportar JSON</button><button class="io-btn" onclick="document.getElementById('importInput').click()">📥 Importar JSON</button></div></div>`;
+                `<div class="pg-hdr"><div><div class="pg-ttl">Configuración</div></div></div><div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Datos de la escuela</div><button class="btn btn-navy btn-sm" onclick="saveConfig()">💾 Guardar</button></div><div class="compact-form"><div class="compact-field" style="min-width:200px;"><label>Nombre</label><input type="text" id="c-nombre" value="${escH(cfg.nombre)}"></div><div class="compact-field" style="min-width:200px;"><label>Subtítulo (lema)</label><input type="text" id="c-subtitulo" value="${escH(cfg.subtitulo)}" placeholder="Ej: 21 de noviembre"></div><div class="compact-field" style="min-width:200px;"><label>Dirección</label><input type="text" id="c-direccion" value="${escH(cfg.direccion)}"></div><div class="compact-field"><label>CCT</label><input type="text" id="c-clave" value="${escH(cfg.clave)}"></div><div class="compact-field"><label>Ciclo</label><input type="text" id="c-ciclo" value="${escH(cfg.ciclo)}"></div><div class="compact-field"><label>Director(a)</label><input type="text" id="c-director" value="${escH(cfg.director)}"></div><div class="compact-field"><label>Cargo</label><input type="text" id="c-cargo" value="${escH(cfg.cargo)}"></div></div></div>` +
+                (isAdmin ? usersManagementHTML() : '') +
+                `<div class="card"><div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Respaldo</div></div><div class="io-row"><button class="io-btn" onclick="doExport()">📤 Exportar JSON</button><button class="io-btn" onclick="document.getElementById('importInput').click()">📥 Importar JSON</button></div></div>`;
+        }
+
+        function usersManagementHTML() {
+            const rows = Object.entries(S.usuarios || {}).map(([key, u]) => `
+                <div style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+                    <div style="flex:1; min-width:140px;">
+                        <div style="font-weight:700; color:var(--navy);">${escH(u.usuario)}</div>
+                        <div style="font-size:11px; color:var(--text-2);">${u.role==='admin'?'Administrador':'Secretario(a)'}${u.active===false?' · Inactivo':''}</div>
+                    </div>
+                    ${u.role==='secretario' ? `<label style="font-size:12px; display:flex; align-items:center; gap:4px; white-space:nowrap;"><input type="checkbox" ${u.canDesign?'checked':''} onchange="toggleUserDesign('${key}',this.checked)"> Acceso a Diseño</label>` : ''}
+                    <button class="btn btn-out btn-sm" onclick="toggleUserActive('${key}', ${u.active===false})">${u.active===false?'Activar':'Desactivar'}</button>
+                    <button class="btn btn-err btn-sm" onclick="deleteUserAccount('${key}','${escH(u.usuario)}')">Eliminar</button>
+                </div>
+            `).join('');
+            return `
+                <div class="card">
+                    <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Usuarios y administradores</div></div>
+                    <div class="compact-form" style="margin-bottom:14px;">
+                        <div class="compact-field"><label>Usuario</label><input type="text" id="u-usuario" class="input-modern" placeholder="ej: secretaria1"></div>
+                        <div class="compact-field"><label>Contraseña</label><input type="text" id="u-password" class="input-modern" placeholder="Contraseña"></div>
+                        <div class="compact-field"><label>Rol</label>
+                            <select id="u-role" class="select-modern" onchange="document.getElementById('u-design-field').style.display=this.value==='secretario'?'':'none';">
+                                <option value="secretario">Secretario(a)</option>
+                                <option value="admin">Administrador</option>
+                            </select>
+                        </div>
+                        <div class="compact-field" id="u-design-field"><label><input type="checkbox" id="u-canDesign"> Acceso a Diseño</label></div>
+                    </div>
+                    <button class="btn btn-navy btn-sm" onclick="addUser()">➕ Agregar usuario</button>
+                    <div style="margin-top:14px; border-top:1px solid var(--border);">
+                        ${rows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no has dado de alta usuarios.</div>'}
+                    </div>
+                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">El usuario "${ADMIN_GENERAL.usuario}" es el administrador general y no puede modificarse ni eliminarse desde aquí.</div>
+                </div>
+            `;
+        }
+
+        function addUser() {
+            const usuario = document.getElementById('u-usuario').value.trim();
+            const password = document.getElementById('u-password').value;
+            const role = document.getElementById('u-role').value;
+            const canDesign = document.getElementById('u-canDesign').checked;
+            if (!usuario || !password) { toast('Usuario y contraseña son obligatorios', 'err'); return; }
+            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase()) { toast(
+                'Ese nombre de usuario está reservado para el administrador general', 'err'); return; }
+            const exists = Object.values(S.usuarios || {}).some(u => u.usuario.toLowerCase() === usuario
+                .toLowerCase());
+            if (exists) { toast('Ese usuario ya existe', 'err'); return; }
+            const ref = db.ref('usuarios').push();
+            ref.set({ usuario, password, role, canDesign: role === 'admin' ? true : canDesign, active: true,
+                    createdBy: S.currentUser.usuario, createdAt: Date.now() })
+                .then(() => toast('Usuario agregado'))
+                .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+        }
+
+        function toggleUserDesign(key, val) {
+            db.ref('usuarios/' + key + '/canDesign').set(val)
+                .catch(err => toast('No se pudo actualizar: ' + err.message, 'err'));
+        }
+
+        function toggleUserActive(key, makeActive) {
+            db.ref('usuarios/' + key + '/active').set(makeActive)
+                .then(() => toast(makeActive ? 'Usuario activado' : 'Usuario desactivado'))
+                .catch(err => toast('No se pudo actualizar: ' + err.message, 'err'));
+        }
+
+        function deleteUserAccount(key, usuario) {
+            if (!confirm(`¿Eliminar al usuario "${usuario}"? Esta acción no se puede deshacer.`)) return;
+            db.ref('usuarios/' + key).remove()
+                .then(() => toast('Usuario eliminado'))
+                .catch(err => toast('No se pudo eliminar: ' + err.message, 'err'));
         }
 
         function saveConfig() {
@@ -2464,6 +2672,21 @@
         }
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+        // Al iniciar: si hay una sesión guardada, entra directo; si no, muestra la pantalla de login
+        (function initSession() {
+            const saved = getSession();
+            if (saved && saved.usuario) {
+                S.currentUser = saved;
+                document.getElementById('loginScreen').style.display = 'none';
+                document.getElementById('app').style.display = 'grid';
+                applyRolePermissions();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+                document.getElementById('app').style.display = 'none';
+            }
+        })();
+
         load();
         updateHeader();
         renderStudents();
