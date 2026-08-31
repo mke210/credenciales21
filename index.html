@@ -1354,6 +1354,8 @@
 
         // Convierte el nombre de usuario a un correo válido para Firebase Auth: quita acentos
         // (á,é,í,ó,ú), la ñ, espacios y cualquier símbolo que un correo no admite.
+        // IMPORTANTE: esta transformación debe mantenerse igual una vez que haya usuarios creados,
+        // porque el login vuelve a calcular el mismo correo interno a partir de lo que la persona escribe.
         function usernameToEmail(usuario) {
             const clean = (usuario || '').toString().toLowerCase()
                 .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
@@ -1416,12 +1418,16 @@
                 logoScale: 100,
                 photoScale: 100,
                 qrScale: 100,
-                sealScale: 100,
+                selloScale: 100,
                 firmaScale: 100,
+                selloOpacity: 75,
+                firmaOpacity: 80,
+                selloRotation: 0,
+                firmaRotation: 0,
                 logoOffset: { x: 0, y: 0 },
                 photoOffset: { x: 0, y: 0 },
                 qrOffset: { x: 0, y: 0 },
-                sealOffset: { x: 0, y: 0 },
+                selloOffset: { x: 0, y: 0 },
                 firmaOffset: { x: 0, y: 0 },
                 schoolNameOffset: { x: 0, y: 0 },
                 subtitleOffset: { x: 0, y: 0 },
@@ -1559,7 +1565,7 @@
             if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
             if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
             if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
-            if (!S.designStyles.sealOffset) S.designStyles.sealOffset = { x: 0, y: 0 };
+            if (!S.designStyles.selloOffset) S.designStyles.selloOffset = { x: 0, y: 0 };
             if (!S.designStyles.firmaOffset) S.designStyles.firmaOffset = { x: 0, y: 0 };
             if (!S.designStyles.schoolNameOffset) S.designStyles.schoolNameOffset = { x: 0, y: 0 };
             if (!S.designStyles.subtitleOffset) S.designStyles.subtitleOffset = { x: 0, y: 0 };
@@ -1578,8 +1584,12 @@
             if (S.designStyles.logoScale === undefined) S.designStyles.logoScale = 100;
             if (S.designStyles.photoScale === undefined) S.designStyles.photoScale = 100;
             if (S.designStyles.qrScale === undefined) S.designStyles.qrScale = 100;
-            if (S.designStyles.sealScale === undefined) S.designStyles.sealScale = 100;
+            if (S.designStyles.selloScale === undefined) S.designStyles.selloScale = 100;
             if (S.designStyles.firmaScale === undefined) S.designStyles.firmaScale = 100;
+            if (S.designStyles.selloOpacity === undefined) S.designStyles.selloOpacity = 75;
+            if (S.designStyles.firmaOpacity === undefined) S.designStyles.firmaOpacity = 80;
+            if (S.designStyles.selloRotation === undefined) S.designStyles.selloRotation = 0;
+            if (S.designStyles.firmaRotation === undefined) S.designStyles.firmaRotation = 0;
             if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
                     right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
             if (S.designStyles.signatureSpace === undefined) S.designStyles.signatureSpace = 0;
@@ -1764,9 +1774,9 @@
             const logoSize = 36 * logoScale;
             const photoScale = (ds.photoScale || 100) / 100;
             const qrScale = (ds.qrScale || 100) / 100;
-            const sealScale = (ds.sealScale || 100) / 100;
+            const selloScale = (ds.selloScale || 100) / 100;
             const firmaScale = (ds.firmaScale || 100) / 100;
-            const sealOff = ds.sealOffset || { x: 0, y: 0 };
+            const selloOff = ds.selloOffset || { x: 0, y: 0 };
             const firmaOff = ds.firmaOffset || { x: 0, y: 0 };
             const sello = S.sello,
                 firma = S.firma;
@@ -1796,16 +1806,20 @@
             const line1 = nombreEscuela;
             const line2 = subtitulo;
 
-            const selloSize = 56 * sealScale;
+            const selloSize = 46 * selloScale;
+            const selloOpacity = (ds.selloOpacity ?? 75) / 100;
+            const selloRot = ds.selloRotation || 0;
             const selloEl = sello ?
-                `<div style="position:absolute; right:${fs(6)}px; bottom:${fs(6)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${sealOff.x}px,${sealOff.y}px); opacity:.85; z-index:3;"><img src="${sello}" style="width:100%;height:100%;object-fit:contain;"></div>` :
-                `<div style="position:absolute; right:${fs(6)}px; bottom:${fs(6)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${sealOff.x}px,${sealOff.y}px); border:1.5px dashed #cbd5e1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:${fs(8)}px; color:#cbd5e1; text-align:center; z-index:3;">Sello</div>`;
+                `<div style="position:absolute; top:${fs(46)}px; left:${fs(26)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${selloOff.x}px,${selloOff.y}px) rotate(${selloRot}deg); opacity:${selloOpacity}; mix-blend-mode:multiply; z-index:3; pointer-events:none;"><img src="${sello}" style="width:100%;height:100%;object-fit:contain;"></div>` :
+                `<div style="position:absolute; top:${fs(46)}px; left:${fs(26)}px; width:${fs(selloSize)}px; height:${fs(selloSize)}px; transform:translate(${selloOff.x}px,${selloOff.y}px) rotate(${selloRot}deg); border:1.5px dashed #cbd5e1; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:${fs(7)}px; color:#cbd5e1; text-align:center; z-index:3;">Sello</div>`;
 
             const firmaW = 74 * firmaScale,
                 firmaH = 32 * firmaScale;
+            const firmaOpacity = (ds.firmaOpacity ?? 80) / 100;
+            const firmaRot = ds.firmaRotation || 0;
             const firmaEl = firma ?
-                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px);"><img src="${firma}" style="width:100%;height:100%;object-fit:contain;"></div>` :
-                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px); border-bottom:1px dashed #94a3b8; display:flex; align-items:flex-end; justify-content:center; font-size:${fs(7)}px; color:#94a3b8; padding-bottom:2px;">Firma</div>`;
+                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px) rotate(${firmaRot}deg); opacity:${firmaOpacity}; mix-blend-mode:multiply;"><img src="${firma}" style="width:100%;height:100%;object-fit:contain;"></div>` :
+                `<div style="position:relative; width:${fs(firmaW)}px; height:${fs(firmaH)}px; margin:0 auto ${fs(2)}px; transform:translate(${firmaOff.x}px,${firmaOff.y}px) rotate(${firmaRot}deg); border-bottom:1px dashed #94a3b8; display:flex; align-items:flex-end; justify-content:center; font-size:${fs(7)}px; color:#94a3b8; padding-bottom:2px;">Firma</div>`;
 
             const schoolNameStyle = stl(ds.schoolName);
             const subtitleStyle = stl(ds.subtitle);
@@ -2041,11 +2055,16 @@
                             </div>
                             <div style="margin-left:10px; display:flex; align-items:center; gap:6px;">
                                 <label style="font-size:11px; font-weight:600; color:var(--text-2);">Escala:</label>
-                                <input type="range" min="50" max="150" value="${ds.sealScale||100}" oninput="updateSealScale(this.value)" style="width:80px;">
-                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.sealScale||100}%</span>
+                                <input type="range" min="50" max="150" value="${ds.selloScale||100}" oninput="updateSelloScale(this.value)" style="width:80px;">
+                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.selloScale||100}%</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-2);">Transparencia:</label>
+                                <input type="range" min="10" max="100" value="${ds.selloOpacity??75}" oninput="updateSelloOpacity(this.value)" style="width:80px;">
+                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.selloOpacity??75}%</span>
                             </div>
                         </div>
-                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el frente de la credencial. Usa la pestaña Posiciones para moverlo.</div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el frente, sobre la foto. Usa la pestaña Posiciones para moverlo o inclinarlo.</div>
                     </div>
                     <div class="card">
                         <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Firma (reverso)</div></div>
@@ -2060,8 +2079,13 @@
                                 <input type="range" min="50" max="150" value="${ds.firmaScale||100}" oninput="updateFirmaScale(this.value)" style="width:80px;">
                                 <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.firmaScale||100}%</span>
                             </div>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <label style="font-size:11px; font-weight:600; color:var(--text-2);">Transparencia:</label>
+                                <input type="range" min="10" max="100" value="${ds.firmaOpacity??80}" oninput="updateFirmaOpacity(this.value)" style="width:80px;">
+                                <span style="font-size:12px; font-weight:600; color:var(--navy);">${ds.firmaOpacity??80}%</span>
+                            </div>
                         </div>
-                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el reverso, junto a los datos del director. Usa la pestaña Posiciones para moverla.</div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:8px;">Aparece en el reverso, junto a los datos del director. Usa la pestaña Posiciones para moverla o inclinarla. Funciona mejor con una imagen horizontal (más ancha que alta).</div>
                     </div>
                 `,
                 style: `
@@ -2074,7 +2098,7 @@
                             const cfgMap = {
                                 photo: { label: 'la foto', scaleKey: 'photoScale', fn: 'updatePhotoScale' },
                                 qr: { label: 'QR + ID', scaleKey: 'qrScale', fn: 'updateQrScale' },
-                                sello: { label: 'el sello', scaleKey: 'sealScale', fn: 'updateSealScale' },
+                                sello: { label: 'el sello', scaleKey: 'selloScale', fn: 'updateSelloScale' },
                                 firma: { label: 'la firma', scaleKey: 'firmaScale', fn: 'updateFirmaScale' }
                             };
                             const c = cfgMap[S.editingElement];
@@ -2151,16 +2175,23 @@
                         ${['logo','photo','qr','sello','firma'].map(el => {
                             const off = getOffset(el);
                             const label = el==='logo'?'Escudo':el==='photo'?'Foto':el==='qr'?'QR + ID':el==='sello'?'Sello (frente)':'Firma (reverso)';
+                            const rotatable = el==='sello' || el==='firma';
+                            const rot = rotatable ? (ds[el+'Rotation']||0) : 0;
                             return `
                             <div class="pos-item">
                                 <span class="pos-label">${label}</span>
-                                <span class="pos-offset">X: ${off.x}  Y: ${off.y}</span>
+                                <span class="pos-offset">X: ${off.x}  Y: ${off.y}${rotatable?`  ·  ${rot}°`:''}</span>
                                 <div class="pos-controls">
                                     <button onclick="updateOffset('${el}','y',-2)" title="Arriba">↑</button>
                                     <button onclick="updateOffset('${el}','x',-2)" title="Izquierda">←</button>
                                     <button onclick="updateOffset('${el}','x',2)" title="Derecha">→</button>
                                     <button onclick="updateOffset('${el}','y',2)" title="Abajo">↓</button>
                                     <button class="pos-reset" onclick="resetOffset('${el}')" title="Centrar (0,0)">⟳</button>
+                                    ${rotatable ? `
+                                    <button onclick="updateRotation('${el}',-3)" title="Inclinar a la izquierda">↺</button>
+                                    <button onclick="updateRotation('${el}',3)" title="Inclinar a la derecha">↻</button>
+                                    <button class="pos-reset" onclick="resetRotation('${el}')" title="Sin inclinación">0°</button>
+                                    ` : ''}
                                 </div>
                             </div>
                             `;
@@ -2693,7 +2724,7 @@
                 .catch(err => toast('No se pudo quitar la firma: ' + err.message, 'err'));
             renderDesign(); }
 
-        function updateSealScale(val) { S.designStyles.sealScale = Math.max(50, Math.min(150, parseInt(val) || 100));
+        function updateSelloScale(val) { S.designStyles.selloScale = Math.max(50, Math.min(150, parseInt(val) || 100));
             saveDS();
             refreshPreview();
             renderDesign(); }
@@ -2703,6 +2734,30 @@
             saveDS();
             refreshPreview();
             renderDesign(); }
+
+        function updateSelloOpacity(val) { S.designStyles.selloOpacity = parseInt(val);
+            saveDS();
+            refreshPreview(); }
+
+        function updateFirmaOpacity(val) { S.designStyles.firmaOpacity = parseInt(val);
+            saveDS();
+            refreshPreview(); }
+
+        // Inclinar sello/firma poco a poco, como una imagen en Word
+        function updateRotation(element, delta) {
+            const key = element + 'Rotation';
+            S.designStyles[key] = (S.designStyles[key] || 0) + delta;
+            saveDS();
+            refreshPreview();
+            renderDesign();
+        }
+
+        function resetRotation(element) {
+            S.designStyles[element + 'Rotation'] = 0;
+            saveDS();
+            refreshPreview();
+            renderDesign();
+        }
 
         // --- Funciones de cámara y foto (sin cambios) ---
         function setFotoPreview(dataUrl) {
