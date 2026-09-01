@@ -109,15 +109,22 @@
         }
         .hdr-info {
             flex: 1;
+            min-width: 0;
         }
         .hdr-title {
             font-size: 16px;
             font-weight: 700;
             color: #fff;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .hdr-sub {
             font-size: 11px;
             color: rgba(255, 255, 255, .6);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .hdr-pill {
             background: var(--gold);
@@ -1138,6 +1145,17 @@
             }
             .hdr-pill {
                 display: none;
+            }
+            #userBadge {
+                display: none;
+            }
+            #logoutBtn {
+                padding: 5px 8px !important;
+                font-size: 0 !important;
+            }
+            #logoutBtn::after {
+                content: '⏻';
+                font-size: 14px;
             }
             .page {
                 padding: 12px;
