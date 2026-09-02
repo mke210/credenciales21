@@ -1566,8 +1566,8 @@
                             throw { code: 'sin-perfil' }; }
                         if (u.active === false) { auth.signOut();
                             throw { code: 'inactivo' }; }
-                        setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, superAdmin: false,
-                            uid: cred.user.uid });
+                        setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
+                            .grupos || [], superAdmin: false, uid: cred.user.uid });
                         showApp();
                     });
                 })
@@ -1606,6 +1606,15 @@
             if (sbSystem) sbSystem.style.display = isAdmin ? '' : 'none';
             const badge = document.getElementById('userBadge');
             if (badge) badge.textContent = `${u.usuario} · ${isAdmin ? 'Administrador' : 'Secretario(a)'}`;
+        }
+
+        // Devuelve solo los alumnos que el usuario logueado puede ver: los administradores ven a
+        // todos; un secretario con grupos asignados solo ve a los alumnos de esos grupos (en
+        // cualquier grado), tal como se le haya configurado en Usuarios y administradores.
+        function getVisibleStudents() {
+            const u = S.currentUser;
+            if (!u || u.role === 'admin' || !u.grupos || !u.grupos.length) return S.students;
+            return S.students.filter(s => u.grupos.includes(s.grupo));
         }
 
         // Funciones de carga y guardado
@@ -1740,12 +1749,18 @@
                         showLogin('Tu acceso fue revocado por un administrador.');
                         return;
                     }
+                    const newGrupos = stillExists.grupos || [];
+                    const oldGrupos = S.currentUser.grupos || [];
+                    const gruposChanged = JSON.stringify(newGrupos) !== JSON.stringify(oldGrupos);
                     if (stillExists.role !== S.currentUser.role || !!stillExists.canDesign !== S.currentUser
-                        .canDesign) {
+                        .canDesign || gruposChanged) {
                         S.currentUser.role = stillExists.role;
                         S.currentUser.canDesign = !!stillExists.canDesign;
+                        S.currentUser.grupos = newGrupos;
                         try { localStorage.setItem('cred_session', JSON.stringify(S.currentUser)); } catch (e) {}
                         applyRolePermissions();
+                        if (gruposChanged) { renderStudents();
+                            if (document.querySelector('.page.active')?.id === 'page-generate') renderGenerate(); }
                     }
                 }
                 if (document.getElementById('app').style.display !== 'none' && document.querySelector(
@@ -2358,7 +2373,8 @@
 
         function renderGenerate() {
             const searchVal = document.getElementById('genSearchInput')?.value || '';
-            const filtered = searchVal.length >= 1 ? S.students.filter(s =>
+            const visibleStudents = getVisibleStudents();
+            const filtered = searchVal.length >= 1 ? visibleStudents.filter(s =>
                 (s.nombre || '').toLowerCase().includes(searchVal.toLowerCase()) ||
                 (s.grado || '').toString().includes(searchVal) ||
                 (s.grupo || '').toLowerCase().includes(searchVal.toLowerCase())
@@ -2379,7 +2395,7 @@
                 }
             }
 
-            const st = selectedStudentId ? S.students.find(s => s.id === selectedStudentId) : null;
+            const st = selectedStudentId ? visibleStudents.find(s => s.id === selectedStudentId) : null;
             const previewArea = document.getElementById('genPreview');
             if (previewArea) {
                 if (st) {
@@ -2429,7 +2445,7 @@
                     if (res) res.classList.remove('show');
                 }
                 const preview = document.getElementById('genPreview');
-                const st2 = selectedStudentId ? S.students.find(s => s.id === selectedStudentId) : null;
+                const st2 = selectedStudentId ? visibleStudents.find(s => s.id === selectedStudentId) : null;
                 if (preview) {
                     if (st2) {
                         preview.innerHTML = `
@@ -2506,7 +2522,7 @@
         // (Estas funciones ya estaban completas, se incluyen aquí para que no falte nada)
 
         function renderStudents() {
-            const all = S.students;
+            const all = getVisibleStudents();
             document.getElementById('nbStudents').textContent = all.length;
             const mat = all.filter(s => s.turno === 'Matutino').length,
                 mix = all.filter(s => s.turno === 'Mixto').length;
@@ -2624,14 +2640,22 @@
 
         function usersManagementHTML() {
             const rows = Object.entries(S.usuarios || {}).map(([key, u]) => `
-                <div style="display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
-                    <div style="flex:1; min-width:140px;">
-                        <div style="font-weight:700; color:var(--navy);">${escH(u.usuario)}</div>
-                        <div style="font-size:11px; color:var(--text-2);">${u.role==='admin'?'Administrador':'Secretario(a)'}${u.active===false?' · Inactivo':''}</div>
+                <div style="padding:10px 4px; border-bottom:1px solid var(--border);">
+                    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:140px;">
+                            <div style="font-weight:700; color:var(--navy);">${escH(u.usuario)}</div>
+                            <div style="font-size:11px; color:var(--text-2);">${u.role==='admin'?'Administrador':'Secretario(a)'}${u.active===false?' · Inactivo':''}${u.role==='secretario'?' · Grupos: '+((u.grupos&&u.grupos.length)?u.grupos.join(', '):'todos (sin asignar)'):''}</div>
+                        </div>
+                        ${u.role==='secretario' ? `<label style="font-size:12px; display:flex; align-items:center; gap:4px; white-space:nowrap;"><input type="checkbox" ${u.canDesign?'checked':''} onchange="toggleUserDesign('${key}',this.checked)"> Acceso a Diseño</label>` : ''}
+                        <button class="btn btn-out btn-sm" onclick="toggleUserActive('${key}', ${u.active===false})">${u.active===false?'Activar':'Desactivar'}</button>
+                        <button class="btn btn-err btn-sm" onclick="deleteUserAccount('${key}','${escH(u.usuario)}')">Eliminar</button>
                     </div>
-                    ${u.role==='secretario' ? `<label style="font-size:12px; display:flex; align-items:center; gap:4px; white-space:nowrap;"><input type="checkbox" ${u.canDesign?'checked':''} onchange="toggleUserDesign('${key}',this.checked)"> Acceso a Diseño</label>` : ''}
-                    <button class="btn btn-out btn-sm" onclick="toggleUserActive('${key}', ${u.active===false})">${u.active===false?'Activar':'Desactivar'}</button>
-                    <button class="btn btn-err btn-sm" onclick="deleteUserAccount('${key}','${escH(u.usuario)}')">Eliminar</button>
+                    ${u.role==='secretario' ? `
+                    <div style="display:flex; align-items:center; gap:6px; margin-top:6px;">
+                        <input type="text" id="grp-${key}" class="input-modern" style="max-width:220px; padding:6px 10px; font-size:12px;" placeholder="ej: B  (o A,B para varios)" value="${(u.grupos||[]).join(',')}">
+                        <button class="btn btn-out btn-sm" onclick="updateUserGroups('${key}')">Guardar grupos</button>
+                    </div>
+                    ` : ''}
                 </div>
             `).join('');
             return `
@@ -2641,18 +2665,19 @@
                         <div class="compact-field"><label>Usuario</label><input type="text" id="u-usuario" class="input-modern" placeholder="ej: secretaria1"></div>
                         <div class="compact-field"><label>Contraseña</label><input type="text" id="u-password" class="input-modern" placeholder="Mínimo 6 caracteres"></div>
                         <div class="compact-field"><label>Rol</label>
-                            <select id="u-role" class="select-modern" onchange="document.getElementById('u-design-field').style.display=this.value==='secretario'?'':'none';">
+                            <select id="u-role" class="select-modern" onchange="const s=this.value==='secretario'?'':'none'; document.getElementById('u-design-field').style.display=s; document.getElementById('u-groups-field').style.display=s;">
                                 <option value="secretario">Secretario(a)</option>
                                 <option value="admin">Administrador</option>
                             </select>
                         </div>
                         <div class="compact-field" id="u-design-field"><label><input type="checkbox" id="u-canDesign"> Acceso a Diseño</label></div>
+                        <div class="compact-field" id="u-groups-field"><label>Grupos que atiende</label><input type="text" id="u-groups" class="input-modern" placeholder="ej: B  (o A,B para varios)"></div>
                     </div>
                     <button class="btn btn-navy btn-sm" onclick="addUser()">➕ Agregar usuario</button>
                     <div style="margin-top:14px; border-top:1px solid var(--border);">
                         ${rows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no has dado de alta usuarios.</div>'}
                     </div>
-                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">El usuario "${ADMIN_GENERAL.usuario}" es el administrador general y no puede modificarse ni eliminarse desde aquí.</div>
+                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">El usuario "${ADMIN_GENERAL.usuario}" es el administrador general y no puede modificarse ni eliminarse desde aquí. Un secretario sin grupos asignados ve a todos los alumnos (déjalo vacío solo si así lo quieres).</div>
                 </div>
             `;
         }
@@ -2662,6 +2687,8 @@
             const password = document.getElementById('u-password').value;
             const role = document.getElementById('u-role').value;
             const canDesign = document.getElementById('u-canDesign').checked;
+            const grupos = document.getElementById('u-groups').value.split(',').map(g => g.trim().toUpperCase())
+                .filter(Boolean);
             if (!usuario || !password) { toast('Usuario y contraseña son obligatorios', 'err'); return; }
             if (password.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'err'); return; }
             if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase()) { toast(
@@ -2676,13 +2703,15 @@
                 .then(cred => {
                     const uid = cred.user.uid;
                     return db.ref('usuarios/' + uid).set({ usuario, role, canDesign: role === 'admin' ? true :
-                            canDesign, active: true, createdBy: S.currentUser.usuario, createdAt: Date.now() })
+                            canDesign, grupos: role === 'admin' ? [] : grupos, active: true, createdBy: S
+                            .currentUser.usuario, createdAt: Date.now() })
                         .then(() => secondaryAuth.signOut());
                 })
                 .then(() => {
                     toast('Usuario agregado');
                     document.getElementById('u-usuario').value = '';
                     document.getElementById('u-password').value = '';
+                    document.getElementById('u-groups').value = '';
                 })
                 .catch(err => {
                     let msg = 'No se pudo crear el usuario: ' + err.message;
@@ -2697,6 +2726,14 @@
 
         function toggleUserDesign(key, val) {
             db.ref('usuarios/' + key + '/canDesign').set(val)
+                .catch(err => toast('No se pudo actualizar: ' + err.message, 'err'));
+        }
+
+        function updateUserGroups(key) {
+            const input = document.getElementById('grp-' + key);
+            const grupos = input.value.split(',').map(g => g.trim().toUpperCase()).filter(Boolean);
+            db.ref('usuarios/' + key + '/grupos').set(grupos)
+                .then(() => toast('Grupos actualizados'))
                 .catch(err => toast('No se pudo actualizar: ' + err.message, 'err'));
         }
 
@@ -3133,7 +3170,8 @@
                         db.ref('usuarios/' + user.uid).once('value').then(snap => {
                             const u = snap.val();
                             if (u && u.active !== false) {
-                                setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign,
+                                setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
+                                        .grupos || [],
                                     superAdmin: false, uid: user.uid });
                                 showApp();
                             } else {
