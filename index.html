@@ -1988,20 +1988,20 @@
             // Reverso con fondo azul y texto blanco asegurado en impresión
             const back = `
                 <div style="background:${N}; color:white; text-align:center; font-weight:800; text-transform:uppercase; padding:${fs(5)}px; border-radius:${fs(4)}px; margin-bottom:${fs(8)}px; font-size:${fs(ds.backTitle.fontSize||9)}px; transform:translate(${fs(bTitleOff.x)}px,${fs(bTitleOff.y)}px);">Información de Contacto</div>
-                <div style="flex:1; display:flex; flex-direction:column; gap:${fs(4)}px; transform:translate(${fs(bFieldOff.x)}px,${fs(bFieldOff.y)}px);">
-                    <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Domicilio</div><div style="${stl(ds.backField)}">${escH(st?.domicilio)||'—'}</div></div>
-                    <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Tutor</div><div style="${stl(ds.backField)}">${escH(st?.tutor)||'—'}</div></div>
-                    <div style="display:grid; grid-template-columns:1.1fr .9fr; gap:${fs(8)}px;">
-                        <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Teléfono</div><div style="${stl(ds.backField)}">${escH(st?.telefono)||'—'}</div></div>
-                        <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Sangre</div><div style="font-size:${fs(12)}px; font-weight:900; color:#CC0000;">${escH(st?.tipoSangre)||'—'}</div></div>
+                <div style="flex:1; min-height:0; display:flex; flex-direction:column; gap:${fs(3)}px; transform:translate(${fs(bFieldOff.x)}px,${fs(bFieldOff.y)}px); overflow:hidden;">
+                    <div style="min-width:0;"><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px; font-weight:800;">Domicilio</div><div style="${stl(ds.backField)} overflow-wrap:break-word; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escH(st?.domicilio)||'—'}</div></div>
+                    <div style="min-width:0;"><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px; font-weight:800;">Tutor</div><div style="${stl(ds.backField)} overflow-wrap:break-word; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escH(st?.tutor)||'—'}</div></div>
+                    <div style="min-width:0;"><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px; font-weight:800;">Teléfono</div><div style="${stl(ds.backField)} overflow-wrap:break-word; word-break:break-word; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escH(st?.telefono)||'—'}</div></div>
+                    <div style="display:grid; grid-template-columns:1.3fr .7fr; gap:${fs(8)}px;">
+                        <div style="min-width:0;"><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px; font-weight:800;">Alergias</div><div style="${stl(ds.backField)} overflow-wrap:break-word; word-break:break-word; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${escH(st?.alergias)||'Ninguna'}</div></div>
+                        <div style="min-width:0;"><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px; font-weight:800;">Sangre</div><div style="font-size:${fs(12)}px; font-weight:900; color:#CC0000; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escH(st?.tipoSangre)||'—'}</div></div>
                     </div>
-                    <div><div style="${stl(ds.backField)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:3px; font-weight:800;">Alergias</div><div style="${stl(ds.backField)}">${escH(st?.alergias)||'Ninguna'}</div></div>
                 </div>
-                <div style="border-top:2px solid ${G}; padding-top:${fs(2)}px; margin-top:${fs(ds.signatureSpace||0)}px; text-align:center;">
+                <div style="border-top:2px solid ${G}; padding-top:${fs(2)}px; margin-top:${fs(ds.signatureSpace||0)}px; text-align:center; flex-shrink:0;">
                     ${firmaEl}
-                    <div style="transform:translate(${fs(dNameOff.x)}px,${fs(dNameOff.y)}px); ${stl(ds.directorName)}">${escH(cfg.director)||'Director'}</div>
-                    <div style="transform:translate(${fs(dInfoOff.x)}px,${fs(dInfoOff.y)}px); ${stl(ds.directorInfo)} margin:${fs(2)}px 0;">${escH(cfg.cargo)||'Director(a)'}</div>
-                    <div style="transform:translate(${fs(dAddrOff.x)}px,${fs(dAddrOff.y)}px); ${stl(ds.directorAddr)}">${escH(cfg.direccion)||'Dirección'}</div>
+                    <div style="transform:translate(${fs(dNameOff.x)}px,${fs(dNameOff.y)}px); ${stl(ds.directorName)} overflow-wrap:break-word;">${escH(cfg.director)||'Director'}</div>
+                    <div style="transform:translate(${fs(dInfoOff.x)}px,${fs(dInfoOff.y)}px); ${stl(ds.directorInfo)} margin:${fs(2)}px 0; overflow-wrap:break-word;">${escH(cfg.cargo)||'Director(a)'}</div>
+                    <div style="transform:translate(${fs(dAddrOff.x)}px,${fs(dAddrOff.y)}px); ${stl(ds.directorAddr)} overflow-wrap:break-word;">${escH(cfg.direccion)||'Dirección'}</div>
                 </div>`;
 
             return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
