@@ -658,6 +658,7 @@
             flex-wrap: wrap;
             align-items: flex-start;
             justify-content: center;
+            margin-left: 5cm;
         }
         .margin-control {
             display: flex;
@@ -892,6 +893,15 @@
         }
 
         /* Posiciones */
+        /* El QR se genera siempre en alta resolución (ver generateQRCodes); esta regla hace que
+           la imagen/canvas resultante llene su contenedor con nitidez, sin importar el tamaño
+           configurado, en vez de generarse pequeño y verse borroso al ampliarlo. */
+        [id^="qr-"] img,
+        [id^="qr-"] canvas,
+        [id^="qr-"] table {
+            width: 100% !important;
+            height: 100% !important;
+        }
         .pos-item {
             display: flex;
             align-items: center;
@@ -1153,6 +1163,7 @@
             }
             .cred-prev-wrap {
                 gap: 12px;
+                margin-left: 0;
             }
             .modal {
                 max-width: 100%;
@@ -1451,7 +1462,9 @@
             idLabel: { fontFamily: 'Arial', fontSize: 6, color: N, align: 'center', bold: true, bgColor: 'transparent',
                 textShadow: 'none' },
             dataDivider: { color: N },
-            backDivider: { color: G }
+            backDivider: { color: G, thickness: 2 },
+            alergiasLine: { color: G, thickness: 1 },
+            sangreLine: { color: G, thickness: 1 }
         };
 
         const S = {
@@ -1500,6 +1513,8 @@
                 alergiasOffset: { x: 0, y: 0 },
                 sangreOffset: { x: 0, y: 0 },
                 backDividerOffset: { x: 0, y: 0 },
+                alergiasLineOffset: { x: 0, y: 0 },
+                sangreLineOffset: { x: 0, y: 0 },
                 directorNameOffset: { x: 0, y: 0 },
                 directorInfoOffset: { x: 0, y: 0 },
                 directorAddrOffset: { x: 0, y: 0 }
@@ -1664,6 +1679,8 @@
             if (!S.designStyles.alergiasOffset) S.designStyles.alergiasOffset = { x: 0, y: 0 };
             if (!S.designStyles.sangreOffset) S.designStyles.sangreOffset = { x: 0, y: 0 };
             if (!S.designStyles.backDividerOffset) S.designStyles.backDividerOffset = { x: 0, y: 0 };
+            if (!S.designStyles.alergiasLineOffset) S.designStyles.alergiasLineOffset = { x: 0, y: 0 };
+            if (!S.designStyles.sangreLineOffset) S.designStyles.sangreLineOffset = { x: 0, y: 0 };
             // Migración: los directores usaban un offset vertical simple; ahora usan X/Y como el resto de los campos
             if (!S.designStyles.directorNameOffset) S.designStyles.directorNameOffset = { x: 0, y: S.designStyles.directorNameOffsetY || 0 };
             if (!S.designStyles.directorInfoOffset) S.designStyles.directorInfoOffset = { x: 0, y: S.designStyles.directorInfoOffsetY || 0 };
@@ -1693,7 +1710,8 @@
             if (!active) return;
             const id = active.id.replace('page-', '');
             if (id === 'design') renderDesign();
-            else if (id === 'generate') renderGenerate();
+            else if (id === 'generate') { if (document.getElementById('genSearchInput')) updateSearchResults();
+                else renderGenerate(); }
             else if (id === 'config') renderConfig();
         }
 
@@ -1777,7 +1795,10 @@
                         try { localStorage.setItem('cred_session', JSON.stringify(S.currentUser)); } catch (e) {}
                         applyRolePermissions();
                         if (gruposChanged) { renderStudents();
-                            if (document.querySelector('.page.active')?.id === 'page-generate') renderGenerate(); }
+                            if (document.querySelector('.page.active')?.id === 'page-generate') {
+                                if (document.getElementById('genSearchInput')) updateSearchResults();
+                                else renderGenerate();
+                            } }
                     }
                 }
                 if (document.getElementById('app').style.display !== 'none' && document.querySelector(
@@ -1907,6 +1928,8 @@
             const alergiasOff = ds.alergiasOffset || { x: 0, y: 0 };
             const sangreOff = ds.sangreOffset || { x: 0, y: 0 };
             const backDivOff = ds.backDividerOffset || { x: 0, y: 0 };
+            const alergLineOff = ds.alergiasLineOffset || { x: 0, y: 0 };
+            const sangreLineOff = ds.sangreLineOffset || { x: 0, y: 0 };
             const idOff = ds.idLabelOffset || { x: 0, y: 0 };
             const dNameOff = ds.directorNameOffset || { x: 0, y: 0 };
             const dInfoOff = ds.directorInfoOffset || { x: 0, y: 0 };
@@ -2000,7 +2023,7 @@
                     ${[['GRADO','Grado',st?.grado?st.grado+'°':'—'],['GRUPO','Grupo',st?.grupo||'—'],['TURNO','Turno',st?.turno||'—'],['VIGENCIA','Vigencia',st?.vigencia||'—']].map(([l,k,v])=>{
                         const valKey = 'dataValue'+k;
                         const vOff = ds[valKey+'Offset'] || { x: 0, y: 0 };
-                        return `<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${fs(divOff.x)}px,${fs(divOff.y)}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${fs(dLblOff.x)}px,${fs(dLblOff.y)}px); text-transform:uppercase;">${l}</div><div style="${stl(ds[valKey])} transform:translate(${fs(vOff.x)}px,${fs(vOff.y)}px);">${v}</div></div>`;
+                        return `<div style="position:relative; padding:${fs(2)}px ${fs(4)}px ${fs(2)}px ${fs(9)}px;"><div style="position:absolute; left:${fs(4)}px; top:0; bottom:0; width:${fs(ds.dataDivider?.thickness||3)}px; background:${ds.dataDivider?.color||N}; transform:translate(${fs(divOff.x)}px,${fs(divOff.y)}px);"></div><div style="${stl(ds.dataLabel)} transform:translate(${fs(dLblOff.x)}px,${fs(dLblOff.y)}px); text-transform:uppercase;">${l}</div><div style="${stl(ds[valKey])} transform:translate(${fs(vOff.x)}px,${fs(vOff.y)}px);">${v}</div></div>`;
                     }).join('')}
                 </div>
                 ${selloEl}`;
@@ -2015,9 +2038,9 @@
                     <div style="min-width:0;"><div style="${stl(ds.backFieldLabel)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px;">Tutor</div><div class="autofit-field" style="${stl(ds.backFieldValue)} overflow-wrap:break-word; word-break:break-word; max-height:${fs(bfValFS*2*1.3)}px; overflow:hidden;">${escH(st?.tutor)||'—'}</div></div>
                     <div style="min-width:0;"><div style="${stl(ds.backFieldLabel)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px;">Teléfono</div><div class="autofit-field" style="${stl(ds.backFieldValue)} overflow-wrap:break-word; word-break:break-word; white-space:nowrap; max-height:${fs(bfValFS*1.3)}px; overflow:hidden;">${escH(st?.telefono)||'—'}</div></div>
                     <div style="position:relative; display:grid; grid-template-columns:${asSplit}fr ${100-asSplit}fr; gap:${fs(10)}px;">
-                        <div style="position:absolute; left:calc(${asSplit}% - ${fs(5)}px); top:0; bottom:0; width:${fs(2)}px; background:${ds.backDivider?.color||G}; transform:translate(${fs(backDivOff.x)}px,${fs(backDivOff.y)}px);"></div>
-                        <div style="min-width:0; transform:translate(${fs(alergiasOff.x)}px,${fs(alergiasOff.y)}px);"><div style="${stl(ds.backFieldLabel)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px;">Alergias</div><div class="autofit-field" style="${stl(ds.backFieldValue)} overflow-wrap:break-word; word-break:break-word; max-height:${fs(bfValFS*2*1.3)}px; overflow:hidden;">${escH(st?.alergias)||'Ninguna'}</div></div>
-                        <div style="min-width:0; transform:translate(${fs(sangreOff.x)}px,${fs(sangreOff.y)}px);"><div style="${stl(ds.backFieldLabel)} border-bottom:1px solid ${G}; padding-bottom:2px; margin-bottom:2px;">Sangre</div><div class="autofit-field" style="font-size:${fs(bfValFS+2)}px; font-weight:900; color:#CC0000; white-space:nowrap; max-height:${fs((bfValFS+2)*1.3)}px; overflow:hidden;">${escH(st?.tipoSangre)||'—'}</div></div>
+                        <div style="position:absolute; left:calc(${asSplit}% - ${fs(5)}px); top:0; bottom:0; width:${fs(ds.backDivider?.thickness||2)}px; background:${ds.backDivider?.color||G}; transform:translate(${fs(backDivOff.x)}px,${fs(backDivOff.y)}px);"></div>
+                        <div style="min-width:0; transform:translate(${fs(alergiasOff.x)}px,${fs(alergiasOff.y)}px);"><div style="${stl(ds.backFieldLabel)} padding-bottom:2px; margin-bottom:1px;">Alergias</div><div style="height:${fs(ds.alergiasLine?.thickness||1)}px; background:${ds.alergiasLine?.color||G}; margin-bottom:2px; transform:translate(${fs(alergLineOff.x)}px,${fs(alergLineOff.y)}px);"></div><div class="autofit-field" style="${stl(ds.backFieldValue)} overflow-wrap:break-word; word-break:break-word; max-height:${fs(bfValFS*2*1.3)}px; overflow:hidden;">${escH(st?.alergias)||'Ninguna'}</div></div>
+                        <div style="min-width:0; transform:translate(${fs(sangreOff.x)}px,${fs(sangreOff.y)}px);"><div style="${stl(ds.backFieldLabel)} padding-bottom:2px; margin-bottom:1px;">Sangre</div><div style="height:${fs(ds.sangreLine?.thickness||1)}px; background:${ds.sangreLine?.color||G}; margin-bottom:2px; transform:translate(${fs(sangreLineOff.x)}px,${fs(sangreLineOff.y)}px);"></div><div class="autofit-field" style="font-size:${fs(bfValFS+2)}px; font-weight:900; color:#CC0000; white-space:nowrap; max-height:${fs((bfValFS+2)*1.3)}px; overflow:hidden;">${escH(st?.tipoSangre)||'—'}</div></div>
                     </div>
                 </div>
                 <div style="border-top:2px solid ${G}; padding-top:${fs(2)}px; margin-top:${fs(ds.signatureSpace||0)}px; text-align:center; flex-shrink:0;">
@@ -2043,8 +2066,11 @@
                         if (st) text = st.matricula || String(st.id);
                     }
                     try {
-                        new QRCode(el, { text: text, width: 60, height: 60, colorDark: '#0B2D6B',
-                            colorLight: '#ffffff' });
+                        // Se genera siempre a 300x300px reales (alta resolución) y luego se
+                        // escala con CSS al tamaño configurado; así se ve nítido incluso ampliado,
+                        // en vez de generarse pequeño y estirarse (lo que lo pone borroso).
+                        new QRCode(el, { text: text, width: 300, height: 300, colorDark: '#0B2D6B',
+                            colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
                     } catch (e) { el.innerHTML = '<span style="font-size:8px;">QR</span>'; }
                 });
             }, 400);
@@ -2140,7 +2166,7 @@
             refreshPreview();
             renderDesign(); }
 
-        function updateQrScale(val) { S.designStyles.qrScale = Math.max(50, Math.min(150, parseInt(val) || 100));
+        function updateQrScale(val) { S.designStyles.qrScale = Math.max(50, Math.min(500, parseInt(val) || 100));
             saveDS();
             refreshPreview();
             renderDesign(); }
@@ -2169,31 +2195,31 @@
                 dataLabel: 'Etiquetas', dataValueGrado: 'Valor: Grado', dataValueGrupo: 'Valor: Grupo',
                 dataValueTurno: 'Valor: Turno', dataValueVigencia: 'Valor: Vigencia', dataDivider: 'Líneas divisoras',
                 backTitle: 'Título rev.', backFieldLabel: 'Campos rev. (etiquetas)', backFieldValue: 'Campos rev. (valores)',
+                alergiasLine: 'Línea de Alergias', sangreLine: 'Línea de Sangre', backDivider: 'Línea divisoria (reverso)',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
             const isImageElement = ['photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
-            const isColorOnlyElement = S.editingElement === 'dataDivider';
+            const isColorOnlyElement = ['dataDivider', 'alergiasLine', 'sangreLine', 'backDivider'].includes(S
+                .editingElement);
 
             let extraControls = '';
-            const noMoveFields = ['backFieldLabel', 'backFieldValue'];
-            if (!isImageElement && !noMoveFields.includes(S.editingElement)) {
-                const off = getOffset(S.editingElement);
+            // Algunos campos usan una posición compartida distinta a su propio nombre:
+            // Domicilio/Tutor/Teléfono/Alergias/Sangre en conjunto se mueven con "backField".
+            const offsetKeyMap = { backFieldLabel: 'backField', backFieldValue: 'backField' };
+            const showMove = !isImageElement || S.editingElement === 'qr';
+            if (showMove) {
+                const offsetKey = offsetKeyMap[S.editingElement] || S.editingElement;
+                const off = getOffset(offsetKey);
                 extraControls = `
                     <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover:</label>
+                        <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover${S.editingElement==='qr'?' (mueve el QR y el ID juntos)':(offsetKeyMap[S.editingElement]?' (mueve Domicilio, Tutor, Teléfono, Alergias y Sangre juntos)':'')}:</label>
                         <div class="move-btn-group">
-                            <button onclick="updateOffset('${S.editingElement}','y',-2)" title="Arriba">↑</button>
-                            <button onclick="updateOffset('${S.editingElement}','x',-2)" title="Izquierda">←</button>
-                            <button onclick="updateOffset('${S.editingElement}','x',2)" title="Derecha">→</button>
-                            <button onclick="updateOffset('${S.editingElement}','y',2)" title="Abajo">↓</button>
-                            <button class="pos-reset" onclick="resetOffset('${S.editingElement}')" title="Centrar (0,0)">⟳</button>
+                            <button onclick="updateOffset('${offsetKey}','y',-2)" title="Arriba">↑</button>
+                            <button onclick="updateOffset('${offsetKey}','x',-2)" title="Izquierda">←</button>
+                            <button onclick="updateOffset('${offsetKey}','x',2)" title="Derecha">→</button>
+                            <button onclick="updateOffset('${offsetKey}','y',2)" title="Abajo">↓</button>
+                            <button class="pos-reset" onclick="resetOffset('${offsetKey}')" title="Centrar (0,0)">⟳</button>
                             <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${off.x}  Y: ${off.y}</span>
                         </div>
-                    </div>
-                `;
-            } else if (noMoveFields.includes(S.editingElement)) {
-                extraControls = `
-                    <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px; font-size:11px; color:var(--text-2);">
-                        Domicilio, Tutor y Teléfono se mueven juntos como "Campos rev." en la pestaña Posiciones. Alergias y Sangre tienen su propia posición ahí mismo.
                     </div>
                 `;
             }
@@ -2288,12 +2314,13 @@
                         ${isImageElement ? (() => {
                             const cfgMap = {
                                 photo: { label: 'la foto', scaleKey: 'photoScale', fn: 'updatePhotoScale', max: 150 },
-                                qr: { label: 'QR + ID', scaleKey: 'qrScale', fn: 'updateQrScale', max: 150 },
+                                qr: { label: 'el código QR', scaleKey: 'qrScale', fn: 'updateQrScale', max: 500 },
                                 sello: { label: 'el sello', scaleKey: 'selloScale', fn: 'updateSelloScale', max: 500 },
                                 firma: { label: 'la firma', scaleKey: 'firmaScale', fn: 'updateFirmaScale', max: 500 }
                             };
                             const c = cfgMap[S.editingElement];
                             const val = ds[c.scaleKey] || 100;
+                            const qrOff = S.editingElement === 'qr' ? getOffset('qr') : null;
                             return `
                         <div class="inline-style-bar">
                             <label>Tamaño de ${c.label}</label>
@@ -2302,13 +2329,29 @@
                                 <input type="number" value="${val}" min="50" max="${c.max}" style="width:55px;text-align:center;" onchange="${c.fn}(this.value)">
                                 <button onclick="${c.fn}((${val}) + 5)">+</button>
                             </div>
-                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original)</span>
+                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original, solo agranda el cuadro QR, no el texto ID)</span>
                         </div>
-                        ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Para cambiar el color/tamaño del texto "ID: ..." selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
+                        ${S.editingElement==='qr' ? `
+                        <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
+                            <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover:</label>
+                            <div class="move-btn-group">
+                                <button onclick="updateOffset('qr','y',-2)" title="Arriba">↑</button>
+                                <button onclick="updateOffset('qr','x',-2)" title="Izquierda">←</button>
+                                <button onclick="updateOffset('qr','x',2)" title="Derecha">→</button>
+                                <button onclick="updateOffset('qr','y',2)" title="Abajo">↓</button>
+                                <button class="pos-reset" onclick="resetOffset('qr')" title="Centrar (0,0)">⟳</button>
+                                <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${qrOff.x}  Y: ${qrOff.y}</span>
+                            </div>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:6px;">Estas flechas mueven el QR junto con el texto "ID: ...". Para cambiar el color/tamaño del texto ID por separado, selecciona <strong>ID</strong> en el menú de arriba.</div>
+                        ` : ''}
                             `;
                         })() : isColorOnlyElement ? `
                         <div class="inline-style-bar">
-                            <label>Color de las líneas</label><input type="color" value="${ds.dataDivider?.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
+                            <label>Color de la línea</label><input type="color" value="${cur.color||(S.editingElement==='dataDivider'?N:G)}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
+                            <label style="margin-left:8px;">Grosor</label>
+                            <input type="range" min="1" max="6" value="${cur.thickness||(S.editingElement==='backDivider'?2:1)}" oninput="updateStyle('thickness',parseInt(this.value)); this.nextElementSibling.textContent=this.value+'px';" style="width:80px;">
+                            <span style="font-size:12px; font-weight:600; color:var(--navy);">${cur.thickness||(S.editingElement==='backDivider'?2:1)}px</span>
                         </div>
                         ` : `
                         <div class="inline-style-bar">
@@ -2449,12 +2492,33 @@
         let selectedStudentId = null;
 
         function renderGenerate() {
-            const searchVal = document.getElementById('genSearchInput')?.value || '';
+            document.getElementById('generatePage').innerHTML = `
+                    <div class="pg-hdr"><div><div class="pg-ttl">Generar Credencial</div></div></div>
+                    <div class="gen-selector">
+                        <div class="search-container">
+                            <input type="text" id="genSearchInput" class="input-modern" placeholder="🔍 Buscar por nombre, grado o grupo..." autocomplete="off" oninput="updateSearchResults()" onkeydown="handleSearchKeydown(event)">
+                            <div id="searchResults" class="search-results"></div>
+                        </div>
+                        <div id="genClearWrap">${selectedStudentId ? `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : ''}</div>
+                    </div>
+                    <div id="genPreview"></div>
+                `;
+            updateSearchResults();
+        }
+
+        // Actualiza solo los resultados de búsqueda y la vista previa, SIN reconstruir la página
+        // completa — así el campo de texto nunca pierde el foco mientras la persona escribe.
+        function updateSearchResults() {
+            const input = document.getElementById('genSearchInput');
+            const searchVal = input ? input.value : '';
             const visibleStudents = getVisibleStudents();
+            const norm = s => (s || '').toString().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            const searchNorm = norm(searchVal);
             const filtered = searchVal.length >= 1 ? visibleStudents.filter(s =>
-                (s.nombre || '').toLowerCase().includes(searchVal.toLowerCase()) ||
+                norm(s.nombre).includes(searchNorm) ||
                 (s.grado || '').toString().includes(searchVal) ||
-                (s.grupo || '').toLowerCase().includes(searchVal.toLowerCase())
+                norm(s.grupo).includes(searchNorm)
             ) : [];
 
             const resultsContainer = document.getElementById('searchResults');
@@ -2471,6 +2535,10 @@
                     resultsContainer.classList.remove('show');
                 }
             }
+
+            const clearWrap = document.getElementById('genClearWrap');
+            if (clearWrap) clearWrap.innerHTML = selectedStudentId ?
+                `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : '';
 
             const st = selectedStudentId ? visibleStudents.find(s => s.id === selectedStudentId) : null;
             const previewArea = document.getElementById('genPreview');
@@ -2494,57 +2562,6 @@
                     `<div class="gen-no-sel">Selecciona un alumno buscando arriba</div>`;
                 }
             }
-
-            document.getElementById('generatePage').innerHTML = `
-                    <div class="pg-hdr"><div><div class="pg-ttl">Generar Credencial</div></div></div>
-                    <div class="gen-selector">
-                        <div class="search-container">
-                            <input type="text" id="genSearchInput" class="input-modern" placeholder="🔍 Buscar por nombre, grado o grupo..." autocomplete="off" oninput="renderGenerate()" onkeydown="handleSearchKeydown(event)">
-                            <div id="searchResults" class="search-results"></div>
-                        </div>
-                        ${selectedStudentId ? `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : ''}
-                    </div>
-                    <div id="genPreview"></div>
-                `;
-            // Restaurar input y volver a ejecutar la lógica
-            setTimeout(() => {
-                const input = document.getElementById('genSearchInput');
-                if (input) input.value = searchVal;
-                const res = document.getElementById('searchResults');
-                if (res && filtered.length > 0 && searchVal.length > 0) {
-                    res.innerHTML = filtered.map(s => `
-                            <div class="search-result-item" data-id="${s.id}" onclick="selectStudent(${s.id})">
-                                <span><strong>${escH(s.nombre)}</strong> <span class="badge bdg-b">${s.grado||'?'}°</span> <span class="badge bdg-g">${s.grupo||'?'}</span></span>
-                                <span style="font-size:12px; color:var(--text-2);">ID: ${s.matricula||s.id}</span>
-                            </div>
-                        `).join('');
-                    res.classList.add('show');
-                } else {
-                    if (res) res.classList.remove('show');
-                }
-                const preview = document.getElementById('genPreview');
-                const st2 = selectedStudentId ? visibleStudents.find(s => s.id === selectedStudentId) : null;
-                if (preview) {
-                    if (st2) {
-                        preview.innerHTML = `
-                                <div class="cred-prev-wrap">
-                                    <div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st2,S.config,S.logo,S.bgImage,240,380,'front')}</div></div>
-                                    <div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st2,S.config,S.logo,S.bgImage,240,380,'back')}</div></div>
-                                </div>
-                                <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
-                                    <button class="btn btn-navy" onclick="printCredential(${st2.id})">🖨️ Imprimir</button>
-                                    <button class="btn btn-out" onclick="printCredential(${st2.id},'front')">Solo Frente</button>
-                                    <button class="btn btn-out" onclick="printCredential(${st2.id},'back')">Solo Reverso</button>
-                                </div>
-                            `;
-                        generateQRCodes();
-                        autofitBackFields(preview);
-                    } else {
-                        preview.innerHTML =
-                        `<div class="gen-no-sel">Selecciona un alumno buscando arriba</div>`;
-                    }
-                }
-            }, 50);
         }
 
         function selectStudent(id) {
@@ -2554,8 +2571,10 @@
                 const st = S.students.find(s => s.id === id);
                 input.value = st ? st.nombre : '';
             }
+            updateSearchResults();
+            // El nombre completo recién puesto en el campo coincide consigo mismo, así que
+            // updateSearchResults() lo volvería a mostrar; lo ocultamos de nuevo a propósito.
             document.getElementById('searchResults')?.classList.remove('show');
-            renderGenerate();
         }
 
         function clearSelection() {
@@ -2563,7 +2582,7 @@
             const input = document.getElementById('genSearchInput');
             if (input) input.value = '';
             document.getElementById('searchResults')?.classList.remove('show');
-            renderGenerate();
+            updateSearchResults();
         }
 
         function handleSearchKeydown(e) {
@@ -3206,7 +3225,7 @@
                 }
             `;
             w.document.write(
-                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credencial</title><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><style>${appCSS}\n${printExtra}</style></head><body>${html}<script>${autofitText.toString()}\n${autofitBackFields.toString()}\ndocument.querySelectorAll('[id^="qr-"]').forEach(el=>{if(!el.hasChildNodes()){try{new QRCode(el,{text:el.id.replace('qr-',''),width:60,height:60,colorDark:'#0B2D6B',colorLight:'#ffffff'})}catch(e){}}});autofitBackFields(document.body);setTimeout(()=>window.print(),800);<\/script></body></html>`
+                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credencial</title><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><style>${appCSS}\n${printExtra}</style></head><body>${html}<script>${autofitText.toString()}\n${autofitBackFields.toString()}\ndocument.querySelectorAll('[id^="qr-"]').forEach(el=>{if(!el.hasChildNodes()){try{new QRCode(el,{text:el.id.replace('qr-',''),width:300,height:300,colorDark:'#0B2D6B',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H})}catch(e){}}});autofitBackFields(document.body);setTimeout(()=>window.print(),800);<\/script></body></html>`
                 );
             w.document.close();
         }
