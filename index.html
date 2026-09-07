@@ -1446,7 +1446,7 @@
             dataValueTurno: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
             dataValueVigencia: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
-                bgColor: 'transparent', textShadow: 'none' },
+                bgColor: 'transparent', textShadow: 'none', uppercase: true },
             backTitle: { fontFamily: 'Arial', fontSize: 9, color: '#ffffff', align: 'center', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
             backFieldLabel: { fontFamily: 'Arial', fontSize: 8, color: '#1e293b', align: 'left', bold: true,
@@ -1661,6 +1661,8 @@
                     if (S.designStyles[key].textShadow === undefined) S.designStyles[key].textShadow = 'none';
                 }
             });
+            if (S.designStyles.dataValueVigencia.uppercase === undefined) S.designStyles.dataValueVigencia
+                .uppercase = true;
             if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
             if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
             if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
@@ -1768,9 +1770,9 @@
                 refreshActivePage();
             });
 
-            db.ref('alumnos').on('value', snap => { const data = snap.val(); if (data) { S.students = Object.values(
-                    data);
-                    renderStudents(); } });
+            db.ref('alumnos').on('value', snap => { const data = snap.val();
+                S.students = data ? Object.values(data) : [];
+                renderStudents(); });
 
             // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
             db.ref('usuarios').on('value', snap => {
@@ -1907,7 +1909,7 @@
             const stl = s => {
                 if (!s) return '';
                 let style =
-                    `font-family:${s.fontFamily||'Arial'};font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}`;
+                    `font-family:${s.fontFamily||'Arial'};font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}${s.uppercase?'text-transform:uppercase;':''}`;
                 if (s.bgColor && s.bgColor !== 'transparent') style += `background-color:${s.bgColor};padding:0 4px;border-radius:2px;`;
                 if (s.textShadow && s.textShadow !== 'none') style += `text-shadow:${s.textShadow};`;
                 return style;
@@ -2364,6 +2366,7 @@
                             </div>
                             <label>Color</label><input type="color" value="${cur.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
                             <label><input type="checkbox" ${cur.bold?'checked':''} onchange="updateStyle('bold',this.checked)"> Negrita</label>
+                            <label><input type="checkbox" ${cur.uppercase?'checked':''} onchange="updateStyle('uppercase',this.checked)"> MAYÚSCULAS</label>
                             <label>Alin.</label>
                             <div class="align-btns">
                                 ${['left','center','right','justify'].map(a=>`<button class="${cur.align===a?'active':''}" onclick="setAlignment('${a}')">${a[0].toUpperCase()}</button>`).join('')}
@@ -2688,19 +2691,7 @@
             const n = document.getElementById('f-nombre').value.trim();
             if (!n) { toast('Nombre obligatorio', 'err'); return; }
             const idRaw = document.getElementById('f-id').value.trim();
-            let newId;
-            if (S.editId) {
-                newId = parseInt(idRaw, 10);
-                if (!idRaw || isNaN(newId)) { toast('El ID debe ser un número', 'err'); return; }
-                const dup = S.students.find(s => s.id === newId && s.id !== S.editId);
-                if (dup) { toast(`Ese ID ya lo usa "${dup.nombre}"`, 'err'); return; }
-            } else {
-                newId = parseInt(idRaw, 10);
-                if (isNaN(newId)) newId = computeNextId();
-            }
-            const data = {
-                id: newId,
-                matricula: String(newId),
+            const baseData = {
                 nombre: n,
                 grado: document.getElementById('f-grado').value.trim(),
                 grupo: document.getElementById('f-grupo').value.trim().toUpperCase(),
@@ -2713,19 +2704,62 @@
                 alergias: document.getElementById('f-alergias').value.trim(),
                 foto: window._currentFoto || ''
             };
-            if (S.editId) S.students = S.students.map(s => s.id === S.editId ? { ...s, ...data } : s);
-            else S.students.push(data);
-            saveSt();
-            closeModal();
-            renderStudents();
-            toast(`Alumno guardado con ID: ${newId}`);
+            const btn = document.querySelector('#studentModal .btn-navy, .modal .btn-navy');
+
+            if (S.editId) {
+                // Editar un alumno existente: no hay riesgo de choque de ID con otro secretario,
+                // porque cada quien escribe solo en la ruta de ESE alumno, nunca en la lista completa.
+                const newId = parseInt(idRaw, 10);
+                if (!idRaw || isNaN(newId)) { toast('El ID debe ser un número', 'err'); return; }
+                if (newId !== S.editId && S.students.some(s => s.id === newId && s.id !== S.editId)) {
+                    toast('Ese ID ya está en uso por otro alumno', 'err');
+                    return;
+                }
+                const oldId = S.editId;
+                const data = { ...baseData, id: newId, matricula: String(newId) };
+                const write = newId === oldId ?
+                    db.ref('alumnos/' + newId).set(data) :
+                    db.ref('alumnos/' + newId).transaction(cur => cur === null ? data : undefined)
+                    .then(res => { if (!res.committed) throw new Error('Ese ID ya está en uso'); return db.ref(
+                        'alumnos/' + oldId).remove(); });
+                write.then(() => { toast(`Alumno actualizado con ID: ${newId}`);
+                        closeModal(); })
+                    .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+                return;
+            }
+
+            // Alumno nuevo: se reserva el ID con una transacción de Firebase, que es atómica en el
+            // servidor. Así, si dos secretarios agregan un alumno al mismo tiempo, nunca terminan
+            // escribiendo sobre el mismo ID y perdiendo el registro del otro.
+            const manualId = parseInt(idRaw, 10);
+            const isManual = !isNaN(manualId);
+
+            function attempt(id, triesLeft) {
+                const data = { ...baseData, id, matricula: String(id) };
+                db.ref('alumnos/' + id).transaction(cur => cur === null ? data : undefined)
+                    .then(res => {
+                        if (!res.committed) {
+                            if (isManual) { toast(`El ID ${id} ya está en uso, elige otro`, 'err'); return; }
+                            if (triesLeft <= 0) { toast(
+                                'No se encontró un ID disponible, intenta de nuevo', 'err'); return; }
+                            attempt(id + 1 > 2024600 ? 2024001 : id + 1, triesLeft - 1);
+                            return;
+                        }
+                        toast(`Alumno guardado con ID: ${id}`);
+                        closeModal();
+                    })
+                    .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+            }
+            attempt(isManual ? manualId : computeNextId(), 30);
         }
 
-        function delStudent(id) { const s = S.students.find(s => s.id === id); if (!s || !confirm(
-                `¿Eliminar a "${s.nombre}"?`)) return; S.students = S.students.filter(s => s.id !== id);
-            saveSt();
-            renderStudents();
-            toast('Alumno eliminado', 'wrn'); }
+        function delStudent(id) {
+            const s = S.students.find(s => s.id === id);
+            if (!s || !confirm(`¿Eliminar a "${s.nombre}"?`)) return;
+            db.ref('alumnos/' + id).remove()
+                .then(() => toast('Alumno eliminado', 'wrn'))
+                .catch(err => toast('No se pudo eliminar: ' + err.message, 'err'));
+        }
 
         function renderConfig() {
             const cfg = S.config;
