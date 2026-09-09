@@ -1528,8 +1528,6 @@
             currentUser: null
         };
 
-        const ADMIN_GENERAL = { usuario: 'admin', password: '182136' };
-
         function getSession() {
             try { return JSON.parse(localStorage.getItem('cred_session') || 'null'); } catch (e) { return null; }
         }
@@ -1569,14 +1567,6 @@
             const btn = document.querySelector('#loginForm button[type="submit"]');
             errEl.style.display = 'none';
 
-            // El administrador general siempre entra igual, sin depender de Firebase Authentication
-            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase() && password === ADMIN_GENERAL
-                .password) {
-                setSession({ usuario: ADMIN_GENERAL.usuario, role: 'admin', canDesign: true, superAdmin: true });
-                showApp();
-                return false;
-            }
-
             if (btn) { btn.disabled = true;
                 btn.textContent = 'Entrando...'; }
             const email = usernameToEmail(usuario);
@@ -1589,7 +1579,7 @@
                         if (u.active === false) { auth.signOut();
                             throw { code: 'inactivo' }; }
                         setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
-                            .grupos || [], superAdmin: false, uid: cred.user.uid });
+                            .grupos || [], uid: cred.user.uid });
                         showApp();
                     });
                 })
@@ -1611,9 +1601,8 @@
         }
 
         function doLogout() {
-            const wasSuperAdmin = S.currentUser && S.currentUser.superAdmin;
             clearSession();
-            if (!wasSuperAdmin) auth.signOut().catch(() => {});
+            auth.signOut().catch(() => {});
             showLogin();
         }
 
@@ -1725,8 +1714,11 @@
             // Escucha en tiempo real: cualquier cambio hecho desde otra computadora/celular se refleja aquí al instante
             db.ref('configuracion/credenciales').on('value', snap => {
                 const data = snap.val();
-                if (data && data.nombre) { S.config = data; }
-                else if (!S.config.nombre) { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S.config = c } catch (e) {} }
+                if (data && data.nombre) {
+                    S.config = { nombre: data.nombre, subtitulo: data.subtitulo || '', direccion: data.direccion ||
+                            '', clave: data.clave || '', ciclo: data.ciclo || '', director: data.director || '',
+                        cargo: data.cargo || '' };
+                } else if (!S.config.nombre) { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S.config = c } catch (e) {} }
                 if (!S.config.subtitulo) S.config.subtitulo = '';
                 refreshActivePage();
             });
@@ -1777,8 +1769,8 @@
             // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
             db.ref('usuarios').on('value', snap => {
                 S.usuarios = snap.val() || {};
-                // Si el usuario logueado (que no sea el admin general) fue eliminado o desactivado, se cierra su sesión
-                if (S.currentUser && !S.currentUser.superAdmin) {
+                // Si el usuario logueado fue eliminado o desactivado, se cierra su sesión
+                if (S.currentUser) {
                     const stillExists = Object.values(S.usuarios).find(u => u.usuario === S.currentUser.usuario);
                     if (!stillExists || stillExists.active === false) {
                         auth.signOut().catch(() => {});
@@ -1813,7 +1805,12 @@
             try { localStorage.setItem('cred_st', JSON.stringify(S.students)); } catch (e) {} }
 
         function saveCfg() {
-            db.ref('configuracion/credenciales').set(S.config).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            // IMPORTANTE: se usa update() (no set()) porque 'configuracion/credenciales' también
+            // contiene el escudo, el fondo, el sello, la firma y los estilos de diseño como
+            // "hermanos" de estos datos. set() habría reemplazado TODO ese nodo y borrado todo
+            // lo demás cada vez que se guardaran los datos de la escuela.
+            db.ref('configuracion/credenciales').update(S.config).catch(err => toast(
+                'No se pudo guardar en la base de datos: ' + err.message, 'err'));
             try { localStorage.setItem('cred_cfg', JSON.stringify(S.config)); } catch (e) {} }
 
         // --- Deshacer cambios de Diseño ---
@@ -1824,7 +1821,7 @@
         let lastUndoSnapshotTime = 0;
         const UNDO_MAX = 20;
 
-        function saveDS() {
+        function saveDS(keys) {
             if (lastSavedDesignStyles !== null) {
                 const now = Date.now();
                 if (now - lastUndoSnapshotTime >= 500 || !S.undoStack.length) {
@@ -1834,8 +1831,20 @@
                 }
             }
             lastSavedDesignStyles = JSON.stringify(S.designStyles);
-            db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast(
-                'No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            if (keys) {
+                // Escribe SOLO la(s) propiedad(es) que cambiaron, nunca el documento completo — así
+                // dos personas editando Diseño al mismo tiempo (por ejemplo dos administradores, o
+                // el mismo admin en dos pestañas) nunca se borran los cambios entre sí.
+                const keyList = Array.isArray(keys) ? keys : [keys];
+                const updates = {};
+                keyList.forEach(k => { updates['configuracion/credenciales/designStyles/' + k] = S
+                    .designStyles[k]; });
+                db.ref().update(updates).catch(err => toast('No se pudo guardar en la base de datos: ' + err
+                    .message, 'err'));
+            } else {
+                db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast(
+                    'No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            }
             try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {}
         }
 
@@ -2118,7 +2127,7 @@
 
         function updateStyle(prop, val) { if (!S.editingElement) return; if (!S.designStyles[S.editingElement]) S
                 .designStyles[S.editingElement] = {}; S.designStyles[S.editingElement][prop] = val;
-            saveDS();
+            saveDS(S.editingElement);
             refreshPreview(); }
 
         function setAlignment(a) { updateStyle('align', a); }
@@ -2129,47 +2138,48 @@
         function adjustMargin(side, delta) { const t = S.marginSide === 'front' ? S.designStyles.margins.front : S
                 .designStyles.margins.back; let n = (t[side] || 0) + delta; if (n < 0) n = 0; if (n > 20) n = 20; t[
                 side] = n;
-            saveDS();
+            saveDS('margins');
             refreshPreview();
             renderDesign(); }
 
         function updateMarginFromInput(side, val) { const t = S.marginSide === 'front' ? S.designStyles.margins.front :
                 S.designStyles.margins.back; let n = parseInt(val); if (isNaN(n)) n = 0; if (n < 0) n = 0; if (n > 20) n =
                 20; t[side] = n;
-            saveDS();
+            saveDS('margins');
             refreshPreview(); }
 
         function adjustSignatureSpace(delta) { let n = (S.designStyles.signatureSpace || 0) + delta; if (n < 0) n = 0; if (
                 n > 50) n = 50; S.designStyles.signatureSpace = n;
-            saveDS();
+            saveDS('signatureSpace');
             refreshPreview();
             renderDesign(); }
 
         function updateSignatureSpaceFromInput(val) { let n = parseInt(val); if (isNaN(n)) n = 0; if (n < 0) n = 0; if (n >
                 50) n = 50; S.designStyles.signatureSpace = n;
-            saveDS();
+            saveDS('signatureSpace');
             refreshPreview(); }
 
         function updateBgOpacity(val) { S.designStyles.bgOpacity = parseInt(val);
-            saveDS(); const lbl = document.getElementById('bgOpacityVal'); if (lbl) lbl.textContent = val + '%';
+            saveDS('bgOpacity'); const lbl = document.getElementById('bgOpacityVal'); if (lbl) lbl.textContent = val +
+                '%';
             refreshPreview(); }
 
         function updateBgFit(val) { S.designStyles.bgFit = val;
-            saveDS();
+            saveDS('bgFit');
             refreshPreview(); }
 
         function updateLogoScale(val) { S.designStyles.logoScale = parseInt(val);
-            saveDS();
+            saveDS('logoScale');
             refreshPreview();
             renderDesign(); }
 
         function updatePhotoScale(val) { S.designStyles.photoScale = Math.max(50, Math.min(150, parseInt(val) || 100));
-            saveDS();
+            saveDS('photoScale');
             refreshPreview();
             renderDesign(); }
 
         function updateQrScale(val) { S.designStyles.qrScale = Math.max(50, Math.min(500, parseInt(val) || 100));
-            saveDS();
+            saveDS('qrScale');
             refreshPreview();
             renderDesign(); }
 
@@ -2178,12 +2188,12 @@
                 y: 0 }; return S.designStyles[key]; }
 
         function updateOffset(element, axis, delta) { const off = getOffset(element); off[axis] = (off[axis] || 0) + delta;
-            saveDS();
+            saveDS(element + 'Offset');
             refreshPreview();
             renderDesign(); }
 
         function resetOffset(element) { const key = element + 'Offset'; S.designStyles[key] = { x: 0, y: 0 };
-            saveDS();
+            saveDS(key);
             refreshPreview();
             renderDesign(); }
 
@@ -2809,7 +2819,7 @@
                     <div style="margin-top:14px; border-top:1px solid var(--border);">
                         ${rows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no has dado de alta usuarios.</div>'}
                     </div>
-                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">El usuario "${ADMIN_GENERAL.usuario}" es el administrador general y no puede modificarse ni eliminarse desde aquí. Un secretario sin grupos asignados ve a todos los alumnos (déjalo vacío solo si así lo quieres).</div>
+                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">Un secretario sin grupos asignados ve a todos los alumnos (déjalo vacío solo si así lo quieres).</div>
                 </div>
             `;
         }
@@ -2823,8 +2833,6 @@
                 .filter(Boolean);
             if (!usuario || !password) { toast('Usuario y contraseña son obligatorios', 'err'); return; }
             if (password.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'err'); return; }
-            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase()) { toast(
-                'Ese nombre de usuario está reservado para el administrador general', 'err'); return; }
             const exists = Object.values(S.usuarios || {}).some(u => u.usuario.toLowerCase() === usuario
                 .toLowerCase());
             if (exists) { toast('Ese usuario ya existe', 'err'); return; }
@@ -3057,58 +3065,59 @@
             renderDesign(); }
 
         function updateSelloScale(val) { S.designStyles.selloScale = Math.max(50, Math.min(500, parseInt(val) || 100));
-            saveDS();
+            saveDS('selloScale');
             refreshPreview();
             renderDesign(); }
 
         function updateFirmaScale(val) { S.designStyles.firmaScale = Math.max(50, Math.min(500, parseInt(val) ||
             100));
-            saveDS();
+            saveDS('firmaScale');
             refreshPreview();
             renderDesign(); }
 
         function updateFirmaWidth(val) { S.designStyles.firmaWidthScale = Math.max(50, Math.min(300, parseInt(
             val) || 100));
-            saveDS();
+            saveDS('firmaWidthScale');
             refreshPreview();
             renderDesign(); }
 
         function toggleSelloEnabled(val) { S.designStyles.selloEnabled = val;
-            saveDS();
+            saveDS('selloEnabled');
             refreshPreview();
             renderDesign(); }
 
         function toggleFirmaEnabled(val) { S.designStyles.firmaEnabled = val;
-            saveDS();
+            saveDS('firmaEnabled');
             refreshPreview();
             renderDesign(); }
 
         function updateAlergiasSplit(val) { S.designStyles.alergiasSangreSplit = Math.max(30, Math.min(80,
             parseInt(val) || 65));
-            saveDS();
+            saveDS('alergiasSangreSplit');
             refreshPreview();
             renderDesign(); }
 
         function updateSelloOpacity(val) { S.designStyles.selloOpacity = parseInt(val);
-            saveDS();
+            saveDS('selloOpacity');
             refreshPreview(); }
 
         function updateFirmaOpacity(val) { S.designStyles.firmaOpacity = parseInt(val);
-            saveDS();
+            saveDS('firmaOpacity');
             refreshPreview(); }
 
         // Inclinar sello/firma poco a poco, como una imagen en Word
         function updateRotation(element, delta) {
             const key = element + 'Rotation';
             S.designStyles[key] = (S.designStyles[key] || 0) + delta;
-            saveDS();
+            saveDS(key);
             refreshPreview();
             renderDesign();
         }
 
         function resetRotation(element) {
-            S.designStyles[element + 'Rotation'] = 0;
-            saveDS();
+            const key = element + 'Rotation';
+            S.designStyles[key] = 0;
+            saveDS(key);
             refreshPreview();
             renderDesign();
         }
@@ -3289,40 +3298,29 @@
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-        // Al iniciar: el admin general se restaura directo desde este dispositivo; el resto de
-        // usuarios se valida contra la sesión real de Firebase Authentication (más seguro,
+        // Al iniciar: se valida contra la sesión real de Firebase Authentication (más seguro,
         // porque revalida el usuario en vez de confiar ciegamente en lo guardado localmente)
         (function initSession() {
-            const saved = getSession();
-            if (saved && saved.usuario && saved.superAdmin) {
-                S.currentUser = saved;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('app').style.display = 'grid';
-                applyRolePermissions();
-            } else {
-                document.getElementById('loginScreen').style.display = 'flex';
-                document.getElementById('app').style.display = 'none';
-                auth.onAuthStateChanged(user => {
-                    if (S.currentUser && S.currentUser.superAdmin) return;
-                    if (user) {
-                        db.ref('usuarios/' + user.uid).once('value').then(snap => {
-                            const u = snap.val();
-                            if (u && u.active !== false) {
-                                setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
-                                        .grupos || [],
-                                    superAdmin: false, uid: user.uid });
-                                showApp();
-                            } else {
-                                auth.signOut().catch(() => {});
-                                clearSession();
-                                showLogin(u ? 'Tu acceso fue revocado por un administrador.' : null);
-                            }
-                        });
-                    } else {
-                        clearSession();
-                    }
-                });
-            }
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    db.ref('usuarios/' + user.uid).once('value').then(snap => {
+                        const u = snap.val();
+                        if (u && u.active !== false) {
+                            setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
+                                .grupos || [], uid: user.uid });
+                            showApp();
+                        } else {
+                            auth.signOut().catch(() => {});
+                            clearSession();
+                            showLogin(u ? 'Tu acceso fue revocado por un administrador.' : null);
+                        }
+                    });
+                } else {
+                    clearSession();
+                }
+            });
         })();
 
         load();
