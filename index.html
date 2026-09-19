@@ -1764,7 +1764,8 @@
 
             db.ref('alumnos').on('value', snap => { const data = snap.val();
                 S.students = data ? Object.values(data) : [];
-                renderStudents(); });
+                renderStudents();
+                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard(); });
 
             // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
             db.ref('usuarios').on('value', snap => {
@@ -1797,6 +1798,7 @@
                 }
                 if (document.getElementById('app').style.display !== 'none' && document.querySelector(
                         '.page.active')?.id === 'page-config') renderConfig();
+                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard();
             });
         }
 
@@ -1918,7 +1920,7 @@
             const stl = s => {
                 if (!s) return '';
                 let style =
-                    `font-family:${s.fontFamily||'Arial'};font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}${s.uppercase?'text-transform:uppercase;':''}`;
+                    `font-family:${s.fontFamily||'Arial'}, Helvetica, 'Liberation Sans', sans-serif;font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}${s.uppercase?'text-transform:uppercase;':''}`;
                 if (s.bgColor && s.bgColor !== 'transparent') style += `background-color:${s.bgColor};padding:0 4px;border-radius:2px;`;
                 if (s.textShadow && s.textShadow !== 'none') style += `text-shadow:${s.textShadow};`;
                 return style;
@@ -2010,8 +2012,8 @@
 
             const schoolHTML = `
                 <div class="school-name-container">
-                    <span class="line" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px);">${escH(line1)}</span>
-                    ${line2 ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
+                    <span class="line autofit-field" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px); max-width:100%; overflow:hidden;">${escH(line1)}</span>
+                    ${line2 ? `<span class="line autofit-field" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px); max-width:100%; overflow:hidden;">${escH(line2)}</span>` : ''}
                 </div>
             `;
 
@@ -2020,7 +2022,7 @@
                     ${logoEl}
                     <div class="text-container" style="flex:1; text-align:center; min-width:0; overflow:visible !important; border:none; background:transparent;">
                         ${schoolHTML}
-                        <div style="transform:translate(${fs(infoOff.x)}px,${fs(infoOff.y)}px); ${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'}</div>
+                        <div style="transform:translate(${fs(infoOff.x)}px,${fs(infoOff.y)}px); ${stl(ds.infoLine)}">CCTE: ${escH(cfg.clave)||'—'}</div>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:${fs(8)}px; margin:${fs(4)}px 0;">
@@ -2113,7 +2115,8 @@
                 alergias: 'Ninguna', id: 'preview', matricula: 'PREVIEW' };
             const fe = document.getElementById('frontPrev'),
                 be = document.getElementById('backPrev');
-            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
+            if (fe) { fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
+                autofitBackFields(fe); }
             if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'back', true);
                 autofitBackFields(be); }
             generateQRCodes();
@@ -2505,6 +2508,7 @@
         let selectedStudentId = null;
 
         function renderGenerate() {
+            const isAdmin = S.currentUser && S.currentUser.role === 'admin';
             document.getElementById('generatePage').innerHTML = `
                     <div class="pg-hdr"><div><div class="pg-ttl">Generar Credencial</div></div></div>
                     <div class="gen-selector">
@@ -2515,8 +2519,42 @@
                         <div id="genClearWrap">${selectedStudentId ? `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : ''}</div>
                     </div>
                     <div id="genPreview"></div>
+                    ${isAdmin ? '<div id="secretaryDashboard"></div>' : ''}
                 `;
             updateSearchResults();
+            if (isAdmin) renderSecretaryDashboard();
+        }
+
+        // Panel solo para administradores: cuántos alumnos ha registrado cada secretario, y qué
+        // grado/grupo tiene asignado. Se actualiza en tiempo real junto con la lista de alumnos.
+        function renderSecretaryDashboard() {
+            const el = document.getElementById('secretaryDashboard');
+            if (!el) return;
+            const secretarios = Object.values(S.usuarios || {}).filter(u => u.role === 'secretario');
+            const rows = secretarios.map(u => {
+                const count = S.students.filter(s => s.createdBy === u.usuario).length;
+                const grupos = (u.grupos && u.grupos.length) ? u.grupos.join(', ') : 'Todos (sin asignar)';
+                return { usuario: u.usuario, grupos, count, active: u.active !== false };
+            }).sort((a, b) => a.usuario.localeCompare(b.usuario));
+            const sinRegistrar = S.students.filter(s => !s.createdBy || !secretarios.some(u => u.usuario === s
+                .createdBy)).length;
+            const totalRows = rows.map(r => `
+                <div style="display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+                    <div style="flex:1; min-width:140px;">
+                        <div style="font-weight:700; color:var(--navy);">${escH(r.usuario)}${!r.active?' <span style="font-size:11px; color:var(--text-3);">(inactivo)</span>':''}</div>
+                        <div style="font-size:11px; color:var(--text-2);">Grado/Grupo asignado: ${escH(r.grupos)}</div>
+                    </div>
+                    <div style="font-size:20px; font-weight:800; color:var(--navy); min-width:50px; text-align:center;">${r.count}</div>
+                    <div style="font-size:11px; color:var(--text-2); min-width:110px;">alumno${r.count===1?'':'s'} registrado${r.count===1?'':'s'}</div>
+                </div>
+            `).join('');
+            el.innerHTML = `
+                <div class="card" style="margin-top:20px;">
+                    <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Alumnos registrados por secretario</div></div>
+                    ${totalRows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no hay secretarios dados de alta.</div>'}
+                    ${sinRegistrar > 0 ? `<div style="font-size:11px; color:var(--text-2); margin-top:10px;">${sinRegistrar} alumno(s) sin un secretario identificado (registrados antes de esta función, o por un administrador).</div>` : ''}
+                </div>
+            `;
         }
 
         // Actualiza solo los resultados de búsqueda y la vista previa, SIN reconstruir la página
@@ -2726,7 +2764,9 @@
                     return;
                 }
                 const oldId = S.editId;
-                const data = { ...baseData, id: newId, matricula: String(newId) };
+                const original = S.students.find(s => s.id === oldId);
+                const data = { ...baseData, id: newId, matricula: String(newId), createdBy: (original &&
+                    original.createdBy) || (S.currentUser ? S.currentUser.usuario : '') };
                 const write = newId === oldId ?
                     db.ref('alumnos/' + newId).set(data) :
                     db.ref('alumnos/' + newId).transaction(cur => cur === null ? data : undefined)
@@ -2741,6 +2781,7 @@
             // Alumno nuevo: se reserva el ID con una transacción de Firebase, que es atómica en el
             // servidor. Así, si dos secretarios agregan un alumno al mismo tiempo, nunca terminan
             // escribiendo sobre el mismo ID y perdiendo el registro del otro.
+            baseData.createdBy = S.currentUser ? S.currentUser.usuario : '';
             const manualId = parseInt(idRaw, 10);
             const isManual = !isNaN(manualId);
 
