@@ -1241,6 +1241,7 @@
                 <div class="nav-item active" data-page="students"><div class="ni-icon">👥</div><span>Alumnos</span><span class="ni-badge" id="nbStudents">0</span></div>
                 <div class="nav-item" data-page="design" id="navDesign"><div class="ni-icon">🎨</div><span>Diseño</span></div>
                 <div class="nav-item" data-page="generate"><div class="ni-icon">🖨️</div><span>Generar</span></div>
+                <div class="nav-item" data-page="dashboard" id="navDashboard"><div class="ni-icon">📊</div><span>Dashboard</span></div>
             </div>
             <div class="sb-section" id="sbSystemSection"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
             <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v7.5</div></div>
@@ -1260,6 +1261,7 @@
             </section>
             <section class="page" id="page-design"><div id="designPage"></div></section>
             <section class="page" id="page-generate"><div id="generatePage"></div></section>
+            <section class="page" id="page-dashboard"><div id="dashboardPage"></div></section>
             <section class="page" id="page-config"><div id="configPage"></div></section>
         </main>
     </div>
@@ -1612,8 +1614,10 @@
             if (!u) return;
             const isAdmin = u.role === 'admin';
             const navDesign = document.getElementById('navDesign');
+            const navDashboard = document.getElementById('navDashboard');
             const sbSystem = document.getElementById('sbSystemSection');
             if (navDesign) navDesign.style.display = (isAdmin || u.canDesign) ? '' : 'none';
+            if (navDashboard) navDashboard.style.display = isAdmin ? '' : 'none';
             if (sbSystem) sbSystem.style.display = isAdmin ? '' : 'none';
             const badge = document.getElementById('userBadge');
             if (badge) badge.textContent = `${u.usuario} · ${isAdmin ? 'Administrador' : 'Secretario(a)'}`;
@@ -1877,12 +1881,14 @@
             if (u && u.role !== 'admin') {
                 if (pg === 'design' && !u.canDesign) { toast('No tienes permiso para acceder a Diseño', 'err'); return; }
                 if (pg === 'config') { toast('No tienes permiso para acceder a Configuración', 'err'); return; }
+                if (pg === 'dashboard') { toast('No tienes permiso para acceder al Dashboard', 'err'); return; }
             }
             document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === pg));
             document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + pg));
             if (pg === 'students') renderStudents();
             if (pg === 'design') renderDesign();
             if (pg === 'generate') renderGenerate();
+            if (pg === 'dashboard') renderDashboardPage();
             if (pg === 'config') renderConfig();
         }
         document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => {
@@ -2012,8 +2018,8 @@
 
             const schoolHTML = `
                 <div class="school-name-container">
-                    <span class="line autofit-field" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px); max-width:100%; overflow:hidden;">${escH(line1)}</span>
-                    ${line2 ? `<span class="line autofit-field" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px); max-width:100%; overflow:hidden;">${escH(line2)}</span>` : ''}
+                    <span class="line" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px);">${escH(line1)}</span>
+                    ${line2 ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
                 </div>
             `;
 
@@ -2115,8 +2121,7 @@
                 alergias: 'Ninguna', id: 'preview', matricula: 'PREVIEW' };
             const fe = document.getElementById('frontPrev'),
                 be = document.getElementById('backPrev');
-            if (fe) { fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
-                autofitBackFields(fe); }
+            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
             if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'back', true);
                 autofitBackFields(be); }
             generateQRCodes();
@@ -2508,7 +2513,6 @@
         let selectedStudentId = null;
 
         function renderGenerate() {
-            const isAdmin = S.currentUser && S.currentUser.role === 'admin';
             document.getElementById('generatePage').innerHTML = `
                     <div class="pg-hdr"><div><div class="pg-ttl">Generar Credencial</div></div></div>
                     <div class="gen-selector">
@@ -2519,14 +2523,22 @@
                         <div id="genClearWrap">${selectedStudentId ? `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : ''}</div>
                     </div>
                     <div id="genPreview"></div>
-                    ${isAdmin ? '<div id="secretaryDashboard"></div>' : ''}
                 `;
             updateSearchResults();
-            if (isAdmin) renderSecretaryDashboard();
         }
 
-        // Panel solo para administradores: cuántos alumnos ha registrado cada secretario, y qué
-        // grado/grupo tiene asignado. Se actualiza en tiempo real junto con la lista de alumnos.
+        // Página Dashboard (solo administradores): cuántos alumnos ha registrado cada secretario,
+        // y qué grado/grupo tiene asignado. Se actualiza en tiempo real junto con la lista de alumnos.
+        function renderDashboardPage() {
+            const container = document.getElementById('dashboardPage');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="pg-hdr"><div><div class="pg-ttl">Dashboard</div><div class="pg-sub">Alumnos registrados por cada secretario</div></div></div>
+                <div id="secretaryDashboard"></div>
+            `;
+            renderSecretaryDashboard();
+        }
+
         function renderSecretaryDashboard() {
             const el = document.getElementById('secretaryDashboard');
             if (!el) return;
@@ -2549,7 +2561,7 @@
                 </div>
             `).join('');
             el.innerHTML = `
-                <div class="card" style="margin-top:20px;">
+                <div class="card">
                     <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Alumnos registrados por secretario</div></div>
                     ${totalRows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no hay secretarios dados de alta.</div>'}
                     ${sinRegistrar > 0 ? `<div style="font-size:11px; color:var(--text-2); margin-top:10px;">${sinRegistrar} alumno(s) sin un secretario identificado (registrados antes de esta función, o por un administrador).</div>` : ''}
