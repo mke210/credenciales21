@@ -1499,7 +1499,10 @@
                 selloEnabled: true,
                 firmaEnabled: true,
                 schoolNameEnabled: true,
+                subtitleEnabled: true,
                 alergiasSangreSplit: 65,
+                bgImageOffset: { x: 0, y: 0 },
+                bgImageBackOffset: { x: 0, y: 0 },
                 logoOffset: { x: 0, y: 0 },
                 photoOffset: { x: 0, y: 0 },
                 qrOffset: { x: 0, y: 0 },
@@ -1660,6 +1663,8 @@
             if (S.designStyles.dataValueVigencia.uppercase === undefined) S.designStyles.dataValueVigencia
                 .uppercase = true;
             if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
+            if (!S.designStyles.bgImageOffset) S.designStyles.bgImageOffset = { x: 0, y: 0 };
+            if (!S.designStyles.bgImageBackOffset) S.designStyles.bgImageBackOffset = { x: 0, y: 0 };
             if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
             if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
             if (!S.designStyles.selloOffset) S.designStyles.selloOffset = { x: 0, y: 0 };
@@ -1696,6 +1701,7 @@
             if (S.designStyles.selloEnabled === undefined) S.designStyles.selloEnabled = true;
             if (S.designStyles.firmaEnabled === undefined) S.designStyles.firmaEnabled = true;
             if (S.designStyles.schoolNameEnabled === undefined) S.designStyles.schoolNameEnabled = true;
+            if (S.designStyles.subtitleEnabled === undefined) S.designStyles.subtitleEnabled = true;
             if (S.designStyles.alergiasSangreSplit === undefined) S.designStyles.alergiasSangreSplit = 65;
             if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
                     right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
@@ -1915,6 +1921,7 @@
         function credCard(st, cfg, logo, bg, w, h, side, isPreview) {
             const hasBg = !!bg,
                 ds = S.designStyles;
+            const bgOff = (side === 'front' ? ds.bgImageOffset : ds.bgImageBackOffset) || { x: 0, y: 0 };
             const m = (side === 'front' ? ds.margins.front : ds.margins.back) || { top: 0, bottom: 0, left: 0, right: 0 };
             const op = ds.bgOpacity ?? 35,
                 fit = ds.bgFit || 'cover',
@@ -2026,7 +2033,7 @@
             const schoolHTML = `
                 <div class="school-name-container">
                     ${ds.schoolNameEnabled!==false ? `<span class="line" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px);">${escH(line1)}</span>` : ''}
-                    ${line2 ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
+                    ${(line2 && ds.subtitleEnabled!==false) ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
                 </div>
             `;
 
@@ -2076,7 +2083,7 @@
                     <div style="transform:translate(${fs(dAddrOff.x)}px,${fs(dAddrOff.y)}px); ${stl(ds.directorAddr)} overflow-wrap:break-word;">${escH(cfg.direccion)||'Dirección'}</div>
                 </div>`;
 
-            return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
+            return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px;transform:translate(${fs(bgOff.x)}px,${fs(bgOff.y)}px);">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
         }
 
         function generateQRCodes() {
@@ -2269,35 +2276,50 @@
                         </div>
                     </div>
                     <div class="card">
-                        <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Fondo (frente)</div></div>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
-                            <div style="flex:1; min-width:200px;">
-                                <button class="btn btn-navy" onclick="document.getElementById('bgInput').click()">📤 Subir diseño</button>
-                                ${S.bgImage ? '<button class="btn btn-err" onclick="removeBg()">Quitar fondo</button>' : ''}
+                        <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Fondo</div></div>
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; color:var(--navy); margin-bottom:8px; font-size:13px;">Frente</div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('bgInput').click()">📤 Subir diseño</button>
+                                ${S.bgImage ? '<button class="btn btn-err btn-sm" onclick="removeBg()">Quitar</button>' : ''}
+                                ${S.bgImage ? `
+                                <div style="margin:10px 0;"><img src="${S.bgImage}" style="max-width:100%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:contain;"></div>
+                                ${(() => { const o = getOffset('bgImage'); return `
+                                <div class="move-btn-group">
+                                    <button onclick="updateOffset('bgImage','y',-2)" title="Arriba">↑</button>
+                                    <button onclick="updateOffset('bgImage','x',-2)" title="Izquierda">←</button>
+                                    <button onclick="updateOffset('bgImage','x',2)" title="Derecha">→</button>
+                                    <button onclick="updateOffset('bgImage','y',2)" title="Abajo">↓</button>
+                                    <button class="pos-reset" onclick="resetOffset('bgImage')" title="Centrar (0,0)">⟳</button>
+                                    <span style="font-size:11px; color:var(--text-2); margin-left:4px;">X: ${o.x} Y: ${o.y}</span>
+                                </div>`; })()}
+                                ` : '<div style="color:var(--text-3); font-size:12px; margin-top:8px;">Sin fondo personalizado</div>'}
+                            </div>
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; color:var(--navy); margin-bottom:8px; font-size:13px;">Reverso</div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('bgBackInput').click()">📤 Subir diseño</button>
+                                ${S.bgImageBack ? '<button class="btn btn-err btn-sm" onclick="removeBgBack()">Quitar</button>' : ''}
+                                ${S.bgImageBack ? `
+                                <div style="margin:10px 0;"><img src="${S.bgImageBack}" style="max-width:100%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:contain;"></div>
+                                ${(() => { const o = getOffset('bgImageBack'); return `
+                                <div class="move-btn-group">
+                                    <button onclick="updateOffset('bgImageBack','y',-2)" title="Arriba">↑</button>
+                                    <button onclick="updateOffset('bgImageBack','x',-2)" title="Izquierda">←</button>
+                                    <button onclick="updateOffset('bgImageBack','x',2)" title="Derecha">→</button>
+                                    <button onclick="updateOffset('bgImageBack','y',2)" title="Abajo">↓</button>
+                                    <button class="pos-reset" onclick="resetOffset('bgImageBack')" title="Centrar (0,0)">⟳</button>
+                                    <span style="font-size:11px; color:var(--text-2); margin-left:4px;">X: ${o.x} Y: ${o.y}</span>
+                                </div>`; })()}
+                                ` : '<div style="color:var(--text-3); font-size:12px; margin-top:8px;">Sin fondo propio: usa el del frente</div>'}
                             </div>
                         </div>
-                        ${S.bgImage ? `
-                        <div style="margin-bottom:12px;">
-                            <img src="${S.bgImage}" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:contain;">
+                        ${(S.bgImage || S.bgImageBack) ? `
+                        <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+                            <div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div>
+                            <div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div>
+                            <div style="font-size:11px; color:var(--text-2); margin-top:6px;">La opacidad y el ajuste aplican por igual al frente y al reverso.</div>
                         </div>
-                        <div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div>
-                        <div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div>
-                        ` : '<div style="color:var(--text-3); font-size:13px;">Sin fondo personalizado</div>'}
-                    </div>
-                    <div class="card">
-                        <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Fondo (reverso)</div></div>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
-                            <div style="flex:1; min-width:200px;">
-                                <button class="btn btn-navy" onclick="document.getElementById('bgBackInput').click()">📤 Subir diseño</button>
-                                ${S.bgImageBack ? '<button class="btn btn-err" onclick="removeBgBack()">Quitar fondo</button>' : ''}
-                            </div>
-                        </div>
-                        ${S.bgImageBack ? `
-                        <div style="margin-bottom:8px;">
-                            <img src="${S.bgImageBack}" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:contain;">
-                        </div>
-                        <div style="font-size:11px; color:var(--text-2);">Usa la misma opacidad y ajuste configurados arriba en "Fondo (frente)".</div>
-                        ` : '<div style="color:var(--text-3); font-size:13px;">Sin fondo propio: se usa el mismo del frente.</div>'}
+                        ` : ''}
                     </div>
                     <div class="card">
                         <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Sello (frente)</div><label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text-2); cursor:pointer;"><input type="checkbox" ${ds.selloEnabled!==false?'checked':''} onchange="toggleSelloEnabled(this.checked)"> Habilitado</label></div>
@@ -2417,6 +2439,12 @@
                             <label><input type="checkbox" ${ds.schoolNameEnabled!==false?'checked':''} onchange="toggleSchoolNameEnabled(this.checked)"> Mostrar el nombre de la escuela</label>
                         </div>
                         <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Desactívalo si ya subiste el nombre de la escuela como parte de la imagen de fondo.</div>
+                        ` : ''}
+                        ${S.editingElement==='subtitle' ? `
+                        <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
+                            <label><input type="checkbox" ${ds.subtitleEnabled!==false?'checked':''} onchange="toggleSubtitleEnabled(this.checked)"> Mostrar el subtítulo</label>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Desactívalo si ya subiste el subtítulo como parte de la imagen de fondo.</div>
                         ` : ''}
                         <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
                             <label>Color de fondo</label><input type="color" value="${(cur.bgColor&&cur.bgColor!=='transparent')?cur.bgColor:'#ffffff'}" style="width:36px;height:30px;" onchange="updateStyle('bgColor',this.value)">
@@ -3193,6 +3221,11 @@
 
         function toggleSchoolNameEnabled(val) { S.designStyles.schoolNameEnabled = val;
             saveDS('schoolNameEnabled');
+            refreshPreview();
+            renderDesign(); }
+
+        function toggleSubtitleEnabled(val) { S.designStyles.subtitleEnabled = val;
+            saveDS('subtitleEnabled');
             refreshPreview();
             renderDesign(); }
 
