@@ -1782,7 +1782,18 @@
             db.ref('alumnos').on('value', snap => { const data = snap.val();
                 S.students = data ? Object.values(data) : [];
                 renderStudents();
-                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard(); });
+                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard();
+                // Migración: los alumnos que ya existían antes de este código de 4 caracteres
+                // reciben uno automáticamente la primera vez que alguien abre la app con ellos
+                // cargados. Se escribe solo ese campo, alumno por alumno, para no chocar con
+                // otros secretarios guardando al mismo tiempo.
+                const usados = todosLosCodigosQREnUso();
+                S.students.filter(s => !s.codigoQR).forEach(s => {
+                    const code = generarCodigoQR(usados);
+                    usados.add(code);
+                    db.ref('alumnos/' + s.id + '/codigoQR').set(code).catch(() => {});
+                });
+            });
 
             // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
             db.ref('usuarios').on('value', snap => {
@@ -1916,6 +1927,26 @@
         }
 
         // Funciones auxiliares
+        // Código corto alfanumérico de 4 caracteres para el QR (mismo criterio que la app de
+        // Calificaciones): evita 0/O/1/I para que nunca se confundan al leerlo a simple vista.
+        const CRED_QR_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        function todosLosCodigosQREnUso() {
+            const set = new Set();
+            S.students.forEach(s => { if (s.codigoQR) set.add(String(s.codigoQR).toUpperCase()); });
+            return set;
+        }
+        function generarCodigoQR(existentes) {
+            const usados = existentes || todosLosCodigosQREnUso();
+            let code, intentos = 0;
+            do {
+                code = '';
+                for (let i = 0; i < 4; i++) code += CRED_QR_ALPHABET[Math.floor(Math.random() * CRED_QR_ALPHABET
+                    .length)];
+                intentos++;
+            } while (usados.has(code) && intentos < 200);
+            return code;
+        }
+
         function getFrame(w, h, hasBg) { return `${hasBg?'':`<rect width="${w}" height="${h}" fill="white"/>`}<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" fill="none" stroke="${N}" stroke-width="1.5" rx="6"/>`; }
 
         function credCard(st, cfg, logo, bg, w, h, side, isPreview) {
@@ -1993,8 +2024,8 @@
             const qrContainer =
                 `
                 <div style="transform:translate(${fs(qo.x)}px,${fs(qo.y)}px); position:relative; display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px;">
-                    <div id="qr-${st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
-                    <div style="${idStyle} transform:translate(${fs(idOff.x)}px,${fs(idOff.y)}px); background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
+                    <div id="qr-${st?.codigoQR||st?.matricula||st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
+                    <div style="${idStyle} transform:translate(${fs(idOff.x)}px,${fs(idOff.y)}px); background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.codigoQR||st?.matricula||st?.id||'—'}</div>
                 </div>
             `;
 
@@ -2094,9 +2125,9 @@
                     let text = 'SIN_ID';
                     if (idPart === 'preview') text = 'PREVIEW';
                     else {
-                        const st = S.students.find(s => String(s.id) === idPart || String(s.matricula) ===
-                            idPart);
-                        if (st) text = st.matricula || String(st.id);
+                        const st = S.students.find(s => String(s.codigoQR) === idPart || String(s.id) === idPart ||
+                            String(s.matricula) === idPart);
+                        if (st) text = st.codigoQR || st.matricula || String(st.id);
                     }
                     try {
                         // Se genera siempre a 300x300px reales (alta resolución) y luego se
@@ -2648,7 +2679,7 @@
                     resultsContainer.innerHTML = filtered.map(s => `
                             <div class="search-result-item" data-id="${s.id}" onclick="selectStudent(${s.id})">
                                 <span><strong>${escH(s.nombre)}</strong> <span class="badge bdg-b">${s.grado||'?'}°</span> <span class="badge bdg-g">${s.grupo||'?'}</span></span>
-                                <span style="font-size:12px; color:var(--text-2);">ID: ${s.matricula||s.id}</span>
+                                <span style="font-size:12px; color:var(--text-2);">ID: ${s.codigoQR||s.matricula||s.id}</span>
                             </div>
                         `).join('');
                     resultsContainer.classList.add('show');
@@ -2836,7 +2867,8 @@
                 const oldId = S.editId;
                 const original = S.students.find(s => s.id === oldId);
                 const data = { ...baseData, id: newId, matricula: String(newId), createdBy: (original &&
-                    original.createdBy) || (S.currentUser ? S.currentUser.usuario : '') };
+                        original.createdBy) || (S.currentUser ? S.currentUser.usuario : ''), codigoQR: (
+                        original && original.codigoQR) || generarCodigoQR() };
                 const write = newId === oldId ?
                     db.ref('alumnos/' + newId).set(data) :
                     db.ref('alumnos/' + newId).transaction(cur => cur === null ? data : undefined)
@@ -2852,6 +2884,7 @@
             // servidor. Así, si dos secretarios agregan un alumno al mismo tiempo, nunca terminan
             // escribiendo sobre el mismo ID y perdiendo el registro del otro.
             baseData.createdBy = S.currentUser ? S.currentUser.usuario : '';
+            baseData.codigoQR = generarCodigoQR();
             const manualId = parseInt(idRaw, 10);
             const isManual = !isNaN(manualId);
 
