@@ -2225,13 +2225,13 @@
                 cur = ds[S.editingElement] || {},
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
             const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT', studentName: 'Alumno',
-                photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
+                logo: 'Escudo', photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
                 dataLabel: 'Etiquetas', dataValueGrado: 'Valor: Grado', dataValueGrupo: 'Valor: Grupo',
                 dataValueTurno: 'Valor: Turno', dataValueVigencia: 'Valor: Vigencia', dataDivider: 'Líneas divisoras',
                 backTitle: 'Título rev.', backFieldLabel: 'Campos rev. (etiquetas)', backFieldValue: 'Campos rev. (valores)',
                 alergiasLine: 'Línea de Alergias', sangreLine: 'Línea de Sangre', backDivider: 'Línea divisoria (reverso)',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
-            const isImageElement = ['photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
+            const isImageElement = ['logo', 'photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
             const isColorOnlyElement = ['dataDivider', 'alergiasLine', 'sangreLine', 'backDivider'].includes(S
                 .editingElement);
 
@@ -2377,6 +2377,7 @@
                         </select>
                         ${isImageElement ? (() => {
                             const cfgMap = {
+                                logo: { label: 'el escudo', scaleKey: 'logoScale', fn: 'updateLogoScale', max: 150 },
                                 photo: { label: 'la foto', scaleKey: 'photoScale', fn: 'updatePhotoScale', max: 150 },
                                 qr: { label: 'el código QR', scaleKey: 'qrScale', fn: 'updateQrScale', max: 500 },
                                 sello: { label: 'el sello', scaleKey: 'selloScale', fn: 'updateSelloScale', max: 500 },
@@ -2384,7 +2385,8 @@
                             };
                             const c = cfgMap[S.editingElement];
                             const val = ds[c.scaleKey] || 100;
-                            const qrOff = S.editingElement === 'qr' ? getOffset('qr') : null;
+                            const movable = ['logo', 'photo', 'qr'].includes(S.editingElement);
+                            const mOff = movable ? getOffset(S.editingElement) : null;
                             return `
                         <div class="inline-style-bar">
                             <label>Tamaño de ${c.label}</label>
@@ -2393,21 +2395,21 @@
                                 <input type="number" value="${val}" min="50" max="${c.max}" style="width:55px;text-align:center;" onchange="${c.fn}(this.value)">
                                 <button onclick="${c.fn}((${val}) + 5)">+</button>
                             </div>
-                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original, solo agranda el cuadro QR, no el texto ID)</span>
+                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original${S.editingElement==='qr'?', solo agranda el cuadro QR, no el texto ID':''})</span>
                         </div>
-                        ${S.editingElement==='qr' ? `
+                        ${movable ? `
                         <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                            <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover:</label>
+                            <label style="font-weight:600; font-size:12px; color:var(--text-2);">Ajusta la posición de cada elemento. Cada flecha mueve 2 píxeles.</label>
                             <div class="move-btn-group">
-                                <button onclick="updateOffset('qr','y',-2)" title="Arriba">↑</button>
-                                <button onclick="updateOffset('qr','x',-2)" title="Izquierda">←</button>
-                                <button onclick="updateOffset('qr','x',2)" title="Derecha">→</button>
-                                <button onclick="updateOffset('qr','y',2)" title="Abajo">↓</button>
-                                <button class="pos-reset" onclick="resetOffset('qr')" title="Centrar (0,0)">⟳</button>
-                                <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${qrOff.x}  Y: ${qrOff.y}</span>
+                                <button onclick="updateOffset('${S.editingElement}','y',-2)" title="Arriba">↑</button>
+                                <button onclick="updateOffset('${S.editingElement}','x',-2)" title="Izquierda">←</button>
+                                <button onclick="updateOffset('${S.editingElement}','x',2)" title="Derecha">→</button>
+                                <button onclick="updateOffset('${S.editingElement}','y',2)" title="Abajo">↓</button>
+                                <button class="pos-reset" onclick="resetOffset('${S.editingElement}')" title="Centrar (0,0)">⟳</button>
+                                <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${mOff.x}  Y: ${mOff.y}</span>
                             </div>
                         </div>
-                        <div style="font-size:11px; color:var(--text-2); margin-top:6px;">Estas flechas mueven el QR junto con el texto "ID: ...". Para cambiar el color/tamaño del texto ID por separado, selecciona <strong>ID</strong> en el menú de arriba.</div>
+                        ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Estas flechas mueven el QR junto con el texto "ID: ...". Para cambiar el color/tamaño del texto ID por separado, selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
                         ` : ''}
                             `;
                         })() : isColorOnlyElement ? `
