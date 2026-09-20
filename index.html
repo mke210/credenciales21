@@ -1309,6 +1309,13 @@
                             <input type="text" id="f-id" class="input-modern" style="font-weight:700;color:var(--navy);">
                             <div style="font-size:0.68em;color:var(--text-3);margin-top:3px;" id="f-id-hint"></div></div>
                     </div>
+                    <div class="frm-grid frm-grid-2" id="f-codigoQR-wrap" style="display:none;grid-template-columns:1.6fr 1fr;gap:12px;margin-bottom:16px;">
+                        <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Código QR (4 caracteres, debajo del QR en la credencial)</label>
+                            <input type="text" id="f-codigoQR" class="input-modern" maxlength="8" style="font-weight:700;color:var(--navy);text-transform:uppercase;" placeholder="Ej: WAY2"></div>
+                        <div style="display:flex;align-items:flex-end;">
+                            <button type="button" class="btn btn-out btn-sm" style="width:100%;" onclick="regenerarCodigoQRModal()">🔄 Generar otro</button>
+                        </div>
+                    </div>
                     <div class="frm-grid frm-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                         <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Grado</label><select id="f-grado" class="select-modern"><option value="">—</option><option value="1">1°</option><option value="2">2°</option><option value="3">3°</option></select></div>
                         <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Grupo</label><select id="f-grupo" class="select-modern"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option></select></div>
@@ -2076,7 +2083,7 @@
                         <div style="transform:translate(${fs(infoOff.x)}px,${fs(infoOff.y)}px); ${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'}</div>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:${fs(8)}px; margin:${fs(4)}px 0;">
+                <div style="display:flex; align-items:center; gap:${fs(8 + Math.max(0, (qrScale - 1) * 24))}px; margin:${fs(4)}px 0;">
                     ${photoBox}
                     <div style="display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px; flex-shrink:0;">
                         ${qrContainer}
@@ -2807,6 +2814,11 @@
                 idHint.textContent = 'Asignado automáticamente al guardar.'; }
             if (s.foto) setFotoPreview(s.foto);
             else removeFoto();
+            const qrWrap = document.getElementById('f-codigoQR-wrap'),
+                qrField = document.getElementById('f-codigoQR');
+            const isAdmin = S.currentUser && S.currentUser.role === 'admin';
+            if (isAdmin && id) { qrWrap.style.display = 'grid';
+                qrField.value = s.codigoQR || ''; } else { qrWrap.style.display = 'none'; }
             document.getElementById('f-nombre').value = s.nombre || '';
             document.getElementById('f-grado').value = s.grado || '';
             document.getElementById('f-grupo').value = s.grupo || '';
@@ -2834,6 +2846,14 @@
             if (n > 2024600) n = 2024001;
             while (existingIds.includes(n)) n++;
             return n;
+        }
+
+        function regenerarCodigoQRModal() {
+            const excluir = S.editId ? String(S.editId) : null;
+            const usados = todosLosCodigosQREnUso();
+            const s = S.editId ? S.students.find(s => s.id === S.editId) : null;
+            if (s && s.codigoQR) usados.delete(String(s.codigoQR).toUpperCase());
+            document.getElementById('f-codigoQR').value = generarCodigoQR(usados);
         }
 
         function saveStudent() {
@@ -2866,9 +2886,20 @@
                 }
                 const oldId = S.editId;
                 const original = S.students.find(s => s.id === oldId);
+                const isAdmin = S.currentUser && S.currentUser.role === 'admin';
+                const qrField = document.getElementById('f-codigoQR');
+                let codigoQR = (original && original.codigoQR) || '';
+                if (isAdmin && qrField) {
+                    const editado = qrField.value.trim().toUpperCase();
+                    if (!editado) { toast('El código QR no puede quedar vacío', 'err'); return; }
+                    const enUso = S.students.some(s => s.id !== oldId && (s.codigoQR || '').toUpperCase() ===
+                        editado);
+                    if (enUso) { toast('Ese código QR ya está en uso por otro alumno', 'err'); return; }
+                    codigoQR = editado;
+                }
+                if (!codigoQR) codigoQR = generarCodigoQR();
                 const data = { ...baseData, id: newId, matricula: String(newId), createdBy: (original &&
-                        original.createdBy) || (S.currentUser ? S.currentUser.usuario : ''), codigoQR: (
-                        original && original.codigoQR) || generarCodigoQR() };
+                        original.createdBy) || (S.currentUser ? S.currentUser.usuario : ''), codigoQR };
                 const write = newId === oldId ?
                     db.ref('alumnos/' + newId).set(data) :
                     db.ref('alumnos/' + newId).transaction(cur => cur === null ? data : undefined)
