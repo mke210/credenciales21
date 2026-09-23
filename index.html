@@ -2089,7 +2089,7 @@
                         ${qrContainer}
                     </div>
                 </div>
-                <div style="${stl(ds.studentName)} transform:translate(${fs(stuOff.x)}px,${fs(stuOff.y)}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
+                <div class="autofit-field" style="${stl(ds.studentName)} transform:translate(${fs(stuOff.x)}px,${fs(stuOff.y)}px); margin:${fs(4)}px 0; text-align:center; max-height:1.3em; line-height:1.3; overflow:hidden;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
                     ${[['GRADO','Grado',st?.grado?st.grado+'°':'—'],['GRUPO','Grupo',st?.grupo||'—'],['TURNO','Turno',st?.turno||'—'],['VIGENCIA','Vigencia',st?.vigencia||'—']].map(([l,k,v])=>{
                         const valKey = 'dataValue'+k;
@@ -2173,7 +2173,8 @@
                 alergias: 'Ninguna', id: 'preview', matricula: 'PREVIEW' };
             const fe = document.getElementById('frontPrev'),
                 be = document.getElementById('backPrev');
-            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 318, 'front', true);
+            if (fe) { fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 318, 'front', true);
+                autofitBackFields(fe); }
             if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImageBack || S.bgImage, 240, 318, 'back', true);
                 autofitBackFields(be); }
             generateQRCodes();
