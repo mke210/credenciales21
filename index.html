@@ -2021,10 +2021,10 @@
                 `<div style="transform:translate(${fs(lo.x)}px,${fs(lo.y)}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0;"><img src="${logo}" style="width:100%;height:100%;border-radius:50%;object-fit:contain;border:3px solid ${N};background:white;padding:2px;"></div>` :
                 `<div style="transform:translate(${fs(lo.x)}px,${fs(lo.y)}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0; border-radius:50%; background:${N}; display:flex; align-items:center; justify-content:center; color:white; font-size:${fs(logoSize*0.3)}px; font-weight:800; border:3px solid ${N};">${(cfg.clave||'ESC').slice(0,3).toUpperCase()}</div>`;
 
-            const photoW = 80 * photoScale, photoH = 100 * photoScale;
+            const photoW = 74.1 * photoScale, photoH = 88.4 * photoScale;
             const photoBox = st?.foto ?
                 `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; border-radius:${fs(6)}px; flex-shrink:0; overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` :
-                `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(36*photoScale)}px; color:#cbd5e1;">👤</span></div>`;
+                `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(33*photoScale)}px; color:#cbd5e1;">👤</span></div>`;
 
             const qrSize = 60 * qrScale;
             const idStyle = stl(ds.idLabel);
