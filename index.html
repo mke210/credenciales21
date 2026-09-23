@@ -553,7 +553,7 @@
         }
         .design-preview-container {
             width: 240px;
-            height: 380px;
+            height: 318px;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 14px 48px rgba(11, 45, 107, .28);
@@ -867,7 +867,7 @@
         }
         .cred-frame {
             width: 240px;
-            height: 380px;
+            height: 318px;
         }
         .input-modern {
             width: 100%;
@@ -1159,7 +1159,7 @@
             .design-preview-container,
             .cred-frame {
                 width: min(240px, 82vw);
-                height: min(380px, 130vw);
+                height: min(318px, 109vw);
             }
             .cred-prev-wrap {
                 gap: 12px;
@@ -2173,8 +2173,8 @@
                 alergias: 'Ninguna', id: 'preview', matricula: 'PREVIEW' };
             const fe = document.getElementById('frontPrev'),
                 be = document.getElementById('backPrev');
-            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
-            if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImageBack || S.bgImage, 240, 380, 'back', true);
+            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 318, 'front', true);
+            if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImageBack || S.bgImage, 240, 318, 'back', true);
                 autofitBackFields(be); }
             generateQRCodes();
         }
@@ -2705,8 +2705,8 @@
                 if (st) {
                     previewArea.innerHTML = `
                             <div class="cred-prev-wrap">
-                                <div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,380,'front')}</div></div>
-                                <div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImageBack||S.bgImage,240,380,'back')}</div></div>
+                                <div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,318,'front')}</div></div>
+                                <div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImageBack||S.bgImage,240,318,'back')}</div></div>
                             </div>
                             <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
                                 <button class="btn btn-navy" onclick="printCredential(${st.id})">🖨️ Imprimir</button>
@@ -3452,10 +3452,10 @@
             const s = S.students.find(s => s.id === id);
             if (!s) { toast('Alumno no encontrado', 'err'); return; }
             const fw = 285,
-                fh = 449;
+                fh = 378;
             let html = '';
             if (!side || side === 'front') html +=
-                `<div style="margin-bottom:20px;">${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
+                `<div style="margin-bottom:3.8px;">${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
             if (!side || side === 'back') html +=
                 `<div>${credCard(s,S.config,S.logo,S.bgImageBack||S.bgImage,fw,fh,'back')}</div>`;
             const w = window.open('', '_blank', 'width=900,height=700');
