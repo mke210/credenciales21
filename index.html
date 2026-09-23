@@ -3453,18 +3453,19 @@
             if (!s) { toast('Alumno no encontrado', 'err'); return; }
             const fw = 285,
                 fh = 378;
-            let html = '';
+            let html = '<div style="display:flex; flex-direction:row; align-items:flex-start; gap:3.8px;">';
             if (!side || side === 'front') html +=
-                `<div style="margin-bottom:3.8px;">${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
+                `<div>${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
             if (!side || side === 'back') html +=
                 `<div>${credCard(s,S.config,S.logo,S.bgImageBack||S.bgImage,fw,fh,'back')}</div>`;
+            html += '</div>';
             const w = window.open('', '_blank', 'width=900,height=700');
             if (!w) { toast('Permite ventanas emergentes', 'err'); return; }
             // Se copia el CSS real de la app (en vez de una copia aparte) para que la impresión
             // luzca SIEMPRE igual a la vista previa de Diseño/Generar, sin importar qué cambie en el futuro.
             const appCSS = Array.from(document.querySelectorAll('style')).map(el => el.textContent).join('\n');
             const printExtra = `
-                body { font-family: Arial; background: #CBD5E1 !important; padding: 24px; display: flex; gap: 24px;
+                body { font-family: Arial; background: #CBD5E1 !important; padding: 24px; display: flex;
                     justify-content: center; overflow: auto !important; height: auto !important; }
                 @media print {
                     body { background: white !important; padding: 0; }
