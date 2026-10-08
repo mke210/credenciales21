@@ -546,14 +546,14 @@
         }
         .editor-preview-area {
             display: flex;
-            gap: 24px;
+            gap: 0;
             align-items: flex-start;
             margin-top: 20px;
             flex-wrap: wrap;
         }
         .design-preview-container {
             width: 240px;
-            height: 380px;
+            height: 318px;
             border-radius: 12px;
             overflow: hidden;
             box-shadow: 0 14px 48px rgba(11, 45, 107, .28);
@@ -654,7 +654,7 @@
         }
         .cred-prev-wrap {
             display: flex;
-            gap: 24px;
+            gap: 0;
             flex-wrap: wrap;
             align-items: flex-start;
             justify-content: center;
@@ -867,7 +867,7 @@
         }
         .cred-frame {
             width: 240px;
-            height: 380px;
+            height: 318px;
         }
         .input-modern {
             width: 100%;
@@ -1159,7 +1159,7 @@
             .design-preview-container,
             .cred-frame {
                 width: min(240px, 82vw);
-                height: min(380px, 130vw);
+                height: min(318px, 109vw);
             }
             .cred-prev-wrap {
                 gap: 12px;
@@ -1241,6 +1241,7 @@
                 <div class="nav-item active" data-page="students"><div class="ni-icon">👥</div><span>Alumnos</span><span class="ni-badge" id="nbStudents">0</span></div>
                 <div class="nav-item" data-page="design" id="navDesign"><div class="ni-icon">🎨</div><span>Diseño</span></div>
                 <div class="nav-item" data-page="generate"><div class="ni-icon">🖨️</div><span>Generar</span></div>
+                <div class="nav-item" data-page="dashboard" id="navDashboard"><div class="ni-icon">📊</div><span>Dashboard</span></div>
             </div>
             <div class="sb-section" id="sbSystemSection"><span class="sb-lbl">Sistema</span><div class="nav-item" data-page="config"><div class="ni-icon">⚙️</div><span>Configuración</span></div></div>
             <div class="sb-footer"><div class="sb-ver">Credenciales Escolares © 2025 - v7.5</div></div>
@@ -1260,6 +1261,7 @@
             </section>
             <section class="page" id="page-design"><div id="designPage"></div></section>
             <section class="page" id="page-generate"><div id="generatePage"></div></section>
+            <section class="page" id="page-dashboard"><div id="dashboardPage"></div></section>
             <section class="page" id="page-config"><div id="configPage"></div></section>
         </main>
     </div>
@@ -1307,6 +1309,13 @@
                             <input type="text" id="f-id" class="input-modern" style="font-weight:700;color:var(--navy);">
                             <div style="font-size:0.68em;color:var(--text-3);margin-top:3px;" id="f-id-hint"></div></div>
                     </div>
+                    <div class="frm-grid frm-grid-2" id="f-codigoQR-wrap" style="display:none;grid-template-columns:1.6fr 1fr;gap:12px;margin-bottom:16px;">
+                        <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Código QR (4 caracteres, debajo del QR en la credencial)</label>
+                            <input type="text" id="f-codigoQR" class="input-modern" maxlength="8" style="font-weight:700;color:var(--navy);text-transform:uppercase;" placeholder="Ej: WAY2"></div>
+                        <div style="display:flex;align-items:flex-end;">
+                            <button type="button" class="btn btn-out btn-sm" style="width:100%;" onclick="regenerarCodigoQRModal()">🔄 Generar otro</button>
+                        </div>
+                    </div>
                     <div class="frm-grid frm-grid-3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px;">
                         <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Grado</label><select id="f-grado" class="select-modern"><option value="">—</option><option value="1">1°</option><option value="2">2°</option><option value="3">3°</option></select></div>
                         <div><label style="font-size:0.75em;font-weight:600;color:var(--text-2);margin-bottom:4px;display:block;">Grupo</label><select id="f-grupo" class="select-modern"><option value="">—</option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option><option>F</option><option>G</option><option>H</option><option>I</option></select></div>
@@ -1347,6 +1356,7 @@
     <div id="toasts"></div>
     <input type="file" id="logoInput" accept="image/*" style="display:none" onchange="handleLogoFile(this)">
     <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="handleBgFile(this)">
+    <input type="file" id="bgBackInput" accept="image/*" style="display:none" onchange="handleBgBackFile(this)">
     <input type="file" id="selloInput" accept="image/*" style="display:none" onchange="handleSelloFile(this)">
     <input type="file" id="firmaInput" accept="image/*" style="display:none" onchange="handleFirmaFile(this)">
     <input type="file" id="fotoFileInput" accept="image/*" style="display:none" onchange="handleFotoFile(this)">
@@ -1446,7 +1456,7 @@
             dataValueTurno: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
             dataValueVigencia: { fontFamily: 'Arial', fontSize: 10, color: N, align: 'left', bold: true,
-                bgColor: 'transparent', textShadow: 'none' },
+                bgColor: 'transparent', textShadow: 'none', uppercase: true },
             backTitle: { fontFamily: 'Arial', fontSize: 9, color: '#ffffff', align: 'center', bold: true,
                 bgColor: 'transparent', textShadow: 'none' },
             backFieldLabel: { fontFamily: 'Arial', fontSize: 8, color: '#1e293b', align: 'left', bold: true,
@@ -1473,6 +1483,7 @@
             subtitulo: '' },
             logo: DEFAULT_LOGO,
             bgImage: DEFAULT_BG,
+            bgImageBack: '',
             sello: '',
             firma: '',
             designStyles: {
@@ -1494,7 +1505,11 @@
                 firmaWidthScale: 100,
                 selloEnabled: true,
                 firmaEnabled: true,
+                schoolNameEnabled: true,
+                subtitleEnabled: true,
                 alergiasSangreSplit: 65,
+                bgImageOffset: { x: 0, y: 0 },
+                bgImageBackOffset: { x: 0, y: 0 },
                 logoOffset: { x: 0, y: 0 },
                 photoOffset: { x: 0, y: 0 },
                 qrOffset: { x: 0, y: 0 },
@@ -1527,8 +1542,6 @@
             usuarios: {},
             currentUser: null
         };
-
-        const ADMIN_GENERAL = { usuario: 'admin', password: '182136' };
 
         function getSession() {
             try { return JSON.parse(localStorage.getItem('cred_session') || 'null'); } catch (e) { return null; }
@@ -1569,14 +1582,6 @@
             const btn = document.querySelector('#loginForm button[type="submit"]');
             errEl.style.display = 'none';
 
-            // El administrador general siempre entra igual, sin depender de Firebase Authentication
-            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase() && password === ADMIN_GENERAL
-                .password) {
-                setSession({ usuario: ADMIN_GENERAL.usuario, role: 'admin', canDesign: true, superAdmin: true });
-                showApp();
-                return false;
-            }
-
             if (btn) { btn.disabled = true;
                 btn.textContent = 'Entrando...'; }
             const email = usernameToEmail(usuario);
@@ -1589,7 +1594,7 @@
                         if (u.active === false) { auth.signOut();
                             throw { code: 'inactivo' }; }
                         setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
-                            .grupos || [], superAdmin: false, uid: cred.user.uid });
+                            .grupos || [], uid: cred.user.uid });
                         showApp();
                     });
                 })
@@ -1611,9 +1616,8 @@
         }
 
         function doLogout() {
-            const wasSuperAdmin = S.currentUser && S.currentUser.superAdmin;
             clearSession();
-            if (!wasSuperAdmin) auth.signOut().catch(() => {});
+            auth.signOut().catch(() => {});
             showLogin();
         }
 
@@ -1623,8 +1627,10 @@
             if (!u) return;
             const isAdmin = u.role === 'admin';
             const navDesign = document.getElementById('navDesign');
+            const navDashboard = document.getElementById('navDashboard');
             const sbSystem = document.getElementById('sbSystemSection');
             if (navDesign) navDesign.style.display = (isAdmin || u.canDesign) ? '' : 'none';
+            if (navDashboard) navDashboard.style.display = isAdmin ? '' : 'none';
             if (sbSystem) sbSystem.style.display = isAdmin ? '' : 'none';
             const badge = document.getElementById('userBadge');
             if (badge) badge.textContent = `${u.usuario} · ${isAdmin ? 'Administrador' : 'Secretario(a)'}`;
@@ -1661,7 +1667,11 @@
                     if (S.designStyles[key].textShadow === undefined) S.designStyles[key].textShadow = 'none';
                 }
             });
+            if (S.designStyles.dataValueVigencia.uppercase === undefined) S.designStyles.dataValueVigencia
+                .uppercase = true;
             if (!S.designStyles.logoOffset) S.designStyles.logoOffset = { x: 0, y: 0 };
+            if (!S.designStyles.bgImageOffset) S.designStyles.bgImageOffset = { x: 0, y: 0 };
+            if (!S.designStyles.bgImageBackOffset) S.designStyles.bgImageBackOffset = { x: 0, y: 0 };
             if (!S.designStyles.photoOffset) S.designStyles.photoOffset = { x: 0, y: 0 };
             if (!S.designStyles.qrOffset) S.designStyles.qrOffset = { x: 0, y: 0 };
             if (!S.designStyles.selloOffset) S.designStyles.selloOffset = { x: 0, y: 0 };
@@ -1697,6 +1707,8 @@
             if (S.designStyles.firmaWidthScale === undefined) S.designStyles.firmaWidthScale = 100;
             if (S.designStyles.selloEnabled === undefined) S.designStyles.selloEnabled = true;
             if (S.designStyles.firmaEnabled === undefined) S.designStyles.firmaEnabled = true;
+            if (S.designStyles.schoolNameEnabled === undefined) S.designStyles.schoolNameEnabled = true;
+            if (S.designStyles.subtitleEnabled === undefined) S.designStyles.subtitleEnabled = true;
             if (S.designStyles.alergiasSangreSplit === undefined) S.designStyles.alergiasSangreSplit = 65;
             if (!S.designStyles.margins) S.designStyles.margins = { front: { top: 0, bottom: 0, left: 0,
                     right: 0 }, back: { top: 0, bottom: 0, left: 0, right: 0 } };
@@ -1710,7 +1722,7 @@
             if (!active) return;
             const id = active.id.replace('page-', '');
             if (id === 'design') renderDesign();
-            else if (id === 'generate') { if (document.getElementById('genSearchInput')) updateSearchResults();
+            else if (id === 'generate') { if (document.getElementById('genSearchInput')) { updateSearchResults(); initBatch(); }
                 else renderGenerate(); }
             else if (id === 'config') renderConfig();
         }
@@ -1723,8 +1735,11 @@
             // Escucha en tiempo real: cualquier cambio hecho desde otra computadora/celular se refleja aquí al instante
             db.ref('configuracion/credenciales').on('value', snap => {
                 const data = snap.val();
-                if (data && data.nombre) { S.config = data; }
-                else if (!S.config.nombre) { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S.config = c } catch (e) {} }
+                if (data && data.nombre) {
+                    S.config = { nombre: data.nombre, subtitulo: data.subtitulo || '', direccion: data.direccion ||
+                            '', clave: data.clave || '', ciclo: data.ciclo || '', director: data.director || '',
+                        cargo: data.cargo || '' };
+                } else if (!S.config.nombre) { try { const c = JSON.parse(localStorage.getItem('cred_cfg')); if (c) S.config = c } catch (e) {} }
                 if (!S.config.subtitulo) S.config.subtitulo = '';
                 refreshActivePage();
             });
@@ -1750,6 +1765,9 @@
                 }
                 refreshActivePage();
             });
+            db.ref('configuracion/credenciales/bgImageBack').on('value', snap => { S.bgImageBack = snap.val() ||
+                '';
+                refreshActivePage(); });
             db.ref('configuracion/credenciales/sello').on('value', snap => { S.sello = snap.val() || '';
                 refreshActivePage(); });
             db.ref('configuracion/credenciales/firma').on('value', snap => { S.firma = snap.val() || '';
@@ -1768,15 +1786,27 @@
                 refreshActivePage();
             });
 
-            db.ref('alumnos').on('value', snap => { const data = snap.val(); if (data) { S.students = Object.values(
-                    data);
-                    renderStudents(); } });
+            db.ref('alumnos').on('value', snap => { const data = snap.val();
+                S.students = data ? Object.values(data) : [];
+                renderStudents();
+                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard();
+                // Migración: los alumnos que ya existían antes de este código de 4 caracteres
+                // reciben uno automáticamente la primera vez que alguien abre la app con ellos
+                // cargados. Se escribe solo ese campo, alumno por alumno, para no chocar con
+                // otros secretarios guardando al mismo tiempo.
+                const usados = todosLosCodigosQREnUso();
+                S.students.filter(s => !s.codigoQR).forEach(s => {
+                    const code = generarCodigoQR(usados);
+                    usados.add(code);
+                    db.ref('alumnos/' + s.id + '/codigoQR').set(code).catch(() => {});
+                });
+            });
 
             // Usuarios y administradores (sincronizado en tiempo real entre todas las computadoras)
             db.ref('usuarios').on('value', snap => {
                 S.usuarios = snap.val() || {};
-                // Si el usuario logueado (que no sea el admin general) fue eliminado o desactivado, se cierra su sesión
-                if (S.currentUser && !S.currentUser.superAdmin) {
+                // Si el usuario logueado fue eliminado o desactivado, se cierra su sesión
+                if (S.currentUser) {
                     const stillExists = Object.values(S.usuarios).find(u => u.usuario === S.currentUser.usuario);
                     if (!stillExists || stillExists.active === false) {
                         auth.signOut().catch(() => {});
@@ -1796,13 +1826,14 @@
                         applyRolePermissions();
                         if (gruposChanged) { renderStudents();
                             if (document.querySelector('.page.active')?.id === 'page-generate') {
-                                if (document.getElementById('genSearchInput')) updateSearchResults();
+                                if (document.getElementById('genSearchInput')) { updateSearchResults(); initBatch(); }
                                 else renderGenerate();
                             } }
                     }
                 }
                 if (document.getElementById('app').style.display !== 'none' && document.querySelector(
                         '.page.active')?.id === 'page-config') renderConfig();
+                if (document.getElementById('secretaryDashboard')) renderSecretaryDashboard();
             });
         }
 
@@ -1811,7 +1842,12 @@
             try { localStorage.setItem('cred_st', JSON.stringify(S.students)); } catch (e) {} }
 
         function saveCfg() {
-            db.ref('configuracion/credenciales').set(S.config).catch(err => toast('No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            // IMPORTANTE: se usa update() (no set()) porque 'configuracion/credenciales' también
+            // contiene el escudo, el fondo, el sello, la firma y los estilos de diseño como
+            // "hermanos" de estos datos. set() habría reemplazado TODO ese nodo y borrado todo
+            // lo demás cada vez que se guardaran los datos de la escuela.
+            db.ref('configuracion/credenciales').update(S.config).catch(err => toast(
+                'No se pudo guardar en la base de datos: ' + err.message, 'err'));
             try { localStorage.setItem('cred_cfg', JSON.stringify(S.config)); } catch (e) {} }
 
         // --- Deshacer cambios de Diseño ---
@@ -1822,7 +1858,7 @@
         let lastUndoSnapshotTime = 0;
         const UNDO_MAX = 20;
 
-        function saveDS() {
+        function saveDS(keys) {
             if (lastSavedDesignStyles !== null) {
                 const now = Date.now();
                 if (now - lastUndoSnapshotTime >= 500 || !S.undoStack.length) {
@@ -1832,8 +1868,20 @@
                 }
             }
             lastSavedDesignStyles = JSON.stringify(S.designStyles);
-            db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast(
-                'No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            if (keys) {
+                // Escribe SOLO la(s) propiedad(es) que cambiaron, nunca el documento completo — así
+                // dos personas editando Diseño al mismo tiempo (por ejemplo dos administradores, o
+                // el mismo admin en dos pestañas) nunca se borran los cambios entre sí.
+                const keyList = Array.isArray(keys) ? keys : [keys];
+                const updates = {};
+                keyList.forEach(k => { updates['configuracion/credenciales/designStyles/' + k] = S
+                    .designStyles[k]; });
+                db.ref().update(updates).catch(err => toast('No se pudo guardar en la base de datos: ' + err
+                    .message, 'err'));
+            } else {
+                db.ref('configuracion/credenciales/designStyles').set(S.designStyles).catch(err => toast(
+                    'No se pudo guardar en la base de datos: ' + err.message, 'err'));
+            }
             try { localStorage.setItem('cred_ds', JSON.stringify(S.designStyles)); } catch (e) {}
         }
 
@@ -1864,12 +1912,14 @@
             if (u && u.role !== 'admin') {
                 if (pg === 'design' && !u.canDesign) { toast('No tienes permiso para acceder a Diseño', 'err'); return; }
                 if (pg === 'config') { toast('No tienes permiso para acceder a Configuración', 'err'); return; }
+                if (pg === 'dashboard') { toast('No tienes permiso para acceder al Dashboard', 'err'); return; }
             }
             document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === pg));
             document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + pg));
             if (pg === 'students') renderStudents();
             if (pg === 'design') renderDesign();
             if (pg === 'generate') renderGenerate();
+            if (pg === 'dashboard') renderDashboardPage();
             if (pg === 'config') renderConfig();
         }
         document.querySelectorAll('.nav-item').forEach(el => el.addEventListener('click', () => {
@@ -1884,11 +1934,32 @@
         }
 
         // Funciones auxiliares
+        // Código corto alfanumérico de 4 caracteres para el QR (mismo criterio que la app de
+        // Calificaciones): evita 0/O/1/I para que nunca se confundan al leerlo a simple vista.
+        const CRED_QR_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        function todosLosCodigosQREnUso() {
+            const set = new Set();
+            S.students.forEach(s => { if (s.codigoQR) set.add(String(s.codigoQR).toUpperCase()); });
+            return set;
+        }
+        function generarCodigoQR(existentes) {
+            const usados = existentes || todosLosCodigosQREnUso();
+            let code, intentos = 0;
+            do {
+                code = '';
+                for (let i = 0; i < 4; i++) code += CRED_QR_ALPHABET[Math.floor(Math.random() * CRED_QR_ALPHABET
+                    .length)];
+                intentos++;
+            } while (usados.has(code) && intentos < 200);
+            return code;
+        }
+
         function getFrame(w, h, hasBg) { return `${hasBg?'':`<rect width="${w}" height="${h}" fill="white"/>`}<rect x="1.5" y="1.5" width="${w-3}" height="${h-3}" fill="none" stroke="${N}" stroke-width="1.5" rx="6"/>`; }
 
         function credCard(st, cfg, logo, bg, w, h, side, isPreview) {
             const hasBg = !!bg,
                 ds = S.designStyles;
+            const bgOff = (side === 'front' ? ds.bgImageOffset : ds.bgImageBackOffset) || { x: 0, y: 0 };
             const m = (side === 'front' ? ds.margins.front : ds.margins.back) || { top: 0, bottom: 0, left: 0, right: 0 };
             const op = ds.bgOpacity ?? 35,
                 fit = ds.bgFit || 'cover',
@@ -1907,7 +1978,7 @@
             const stl = s => {
                 if (!s) return '';
                 let style =
-                    `font-family:${s.fontFamily||'Arial'};font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}`;
+                    `font-family:${s.fontFamily||'Arial'}, Helvetica, 'Liberation Sans', sans-serif;font-size:${fs(s.fontSize||12)}px;color:${s.color||N};text-align:${s.align||'left'};${s.bold?'font-weight:800;':''}${s.uppercase?'text-transform:uppercase;':''}`;
                 if (s.bgColor && s.bgColor !== 'transparent') style += `background-color:${s.bgColor};padding:0 4px;border-radius:2px;`;
                 if (s.textShadow && s.textShadow !== 'none') style += `text-shadow:${s.textShadow};`;
                 return style;
@@ -1950,18 +2021,18 @@
                 `<div style="transform:translate(${fs(lo.x)}px,${fs(lo.y)}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0;"><img src="${logo}" style="width:100%;height:100%;border-radius:50%;object-fit:contain;border:3px solid ${N};background:white;padding:2px;"></div>` :
                 `<div style="transform:translate(${fs(lo.x)}px,${fs(lo.y)}px); position:relative; width:${fs(logoSize)}px; height:${fs(logoSize)}px; flex-shrink:0; border-radius:50%; background:${N}; display:flex; align-items:center; justify-content:center; color:white; font-size:${fs(logoSize*0.3)}px; font-weight:800; border:3px solid ${N};">${(cfg.clave||'ESC').slice(0,3).toUpperCase()}</div>`;
 
-            const photoW = 80 * photoScale, photoH = 100 * photoScale;
+            const photoW = 74.1 * photoScale, photoH = 88.4 * photoScale;
             const photoBox = st?.foto ?
                 `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; border-radius:${fs(6)}px; flex-shrink:0; overflow:hidden;"><img src="${st.foto}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>` :
-                `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(36*photoScale)}px; color:#cbd5e1;">👤</span></div>`;
+                `<div style="transform:translate(${fs(po.x)}px,${fs(po.y)}px); position:relative; width:${fs(photoW)}px; height:${fs(photoH)}px; border:3px solid ${N}; background:#f1f5f9; display:flex; align-items:center; justify-content:center; border-radius:${fs(6)}px; flex-shrink:0;"><span style="font-size:${fs(33*photoScale)}px; color:#cbd5e1;">👤</span></div>`;
 
             const qrSize = 60 * qrScale;
             const idStyle = stl(ds.idLabel);
             const qrContainer =
                 `
                 <div style="transform:translate(${fs(qo.x)}px,${fs(qo.y)}px); position:relative; display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px;">
-                    <div id="qr-${st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
-                    <div style="${idStyle} transform:translate(${fs(idOff.x)}px,${fs(idOff.y)}px); background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.matricula||st?.id||'—'}</div>
+                    <div id="qr-${st?.codigoQR||st?.matricula||st?.id||'preview'}" style="width:${fs(qrSize)}px; height:${fs(qrSize)}px; border:2px solid ${N}; border-radius:${fs(4)}px; display:flex; align-items:center; justify-content:center; background:white;"></div>
+                    <div style="${idStyle} transform:translate(${fs(idOff.x)}px,${fs(idOff.y)}px); background:${G}20; padding:${fs(2)}px ${fs(5)}px; border-radius:${fs(2)}px;">ID: ${st?.codigoQR||st?.matricula||st?.id||'—'}</div>
                 </div>
             `;
 
@@ -1999,8 +2070,8 @@
 
             const schoolHTML = `
                 <div class="school-name-container">
-                    <span class="line" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px);">${escH(line1)}</span>
-                    ${line2 ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
+                    ${ds.schoolNameEnabled!==false ? `<span class="line" style="${schoolNameStyle} transform:translate(${fs(snOff.x)}px,${fs(snOff.y)}px);">${escH(line1)}</span>` : ''}
+                    ${(line2 && ds.subtitleEnabled!==false) ? `<span class="line" style="${subtitleStyle} transform:translate(${fs(subOff.x)}px,${fs(subOff.y)}px);">${escH(line2)}</span>` : ''}
                 </div>
             `;
 
@@ -2009,16 +2080,16 @@
                     ${logoEl}
                     <div class="text-container" style="flex:1; text-align:center; min-width:0; overflow:visible !important; border:none; background:transparent;">
                         ${schoolHTML}
-                        <div style="transform:translate(${fs(infoOff.x)}px,${fs(infoOff.y)}px); ${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'} | ${escH(cfg.ciclo)||'Ciclo Escolar'}</div>
+                        <div style="transform:translate(${fs(infoOff.x)}px,${fs(infoOff.y)}px); ${stl(ds.infoLine)}">CCT: ${escH(cfg.clave)||'—'}</div>
                     </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:${fs(8)}px; margin:${fs(4)}px 0;">
+                <div style="display:flex; align-items:center; gap:${fs(8 + Math.max(0, (qrScale - 1) * 24))}px; margin:${fs(4)}px 0;">
                     ${photoBox}
                     <div style="display:flex; flex-direction:column; align-items:center; gap:${fs(3)}px; flex-shrink:0;">
                         ${qrContainer}
                     </div>
                 </div>
-                <div style="${stl(ds.studentName)} transform:translate(${fs(stuOff.x)}px,${fs(stuOff.y)}px); margin:${fs(4)}px 0; text-align:center;">${escH(st?.nombre||'Nombre del Alumno')}</div>
+                <div class="autofit-field" style="${stl(ds.studentName)} transform:translate(${fs(stuOff.x)}px,${fs(stuOff.y)}px); margin:${fs(4)}px 0; text-align:center; max-height:1.3em; line-height:1.3; overflow:hidden;">${escH(st?.nombre||'Nombre del Alumno')}</div>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:${fs(3)}px; margin-top:${fs(3)}px; padding-top:${fs(3)}px;">
                     ${[['GRADO','Grado',st?.grado?st.grado+'°':'—'],['GRUPO','Grupo',st?.grupo||'—'],['TURNO','Turno',st?.turno||'—'],['VIGENCIA','Vigencia',st?.vigencia||'—']].map(([l,k,v])=>{
                         const valKey = 'dataValue'+k;
@@ -2050,7 +2121,7 @@
                     <div style="transform:translate(${fs(dAddrOff.x)}px,${fs(dAddrOff.y)}px); ${stl(ds.directorAddr)} overflow-wrap:break-word;">${escH(cfg.direccion)||'Dirección'}</div>
                 </div>`;
 
-            return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
+            return `<div style="position:relative; width:${w}px; height:${h}px; border-radius:6px; overflow:hidden;">${bg?`<img src="${bg}" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:${fit};opacity:${op/100};z-index:0;border-radius:6px;transform:translate(${fs(bgOff.x)}px,${fs(bgOff.y)}px);">`:''}<svg width="${w}" height="${h}" style="position:absolute;top:0;left:0;z-index:1">${getFrame(w,h,hasBg)}</svg><div style="position:absolute; top:${tp}px; left:${lp}px; width:${cw}px; height:${ch}px; z-index:2; display:flex; flex-direction:column;">${side==='front'?front:back}</div></div>`;
         }
 
         function generateQRCodes() {
@@ -2061,9 +2132,9 @@
                     let text = 'SIN_ID';
                     if (idPart === 'preview') text = 'PREVIEW';
                     else {
-                        const st = S.students.find(s => String(s.id) === idPart || String(s.matricula) ===
-                            idPart);
-                        if (st) text = st.matricula || String(st.id);
+                        const st = S.students.find(s => String(s.codigoQR) === idPart || String(s.id) === idPart ||
+                            String(s.matricula) === idPart);
+                        if (st) text = st.codigoQR || st.matricula || String(st.id);
                     }
                     try {
                         // Se genera siempre a 300x300px reales (alta resolución) y luego se
@@ -2102,8 +2173,9 @@
                 alergias: 'Ninguna', id: 'preview', matricula: 'PREVIEW' };
             const fe = document.getElementById('frontPrev'),
                 be = document.getElementById('backPrev');
-            if (fe) fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'front', true);
-            if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 380, 'back', true);
+            if (fe) { fe.innerHTML = credCard(fk, S.config, S.logo, S.bgImage, 240, 318, 'front', true);
+                autofitBackFields(fe); }
+            if (be) { be.innerHTML = credCard(fk, S.config, S.logo, S.bgImageBack || S.bgImage, 240, 318, 'back', true);
                 autofitBackFields(be); }
             generateQRCodes();
         }
@@ -2116,7 +2188,7 @@
 
         function updateStyle(prop, val) { if (!S.editingElement) return; if (!S.designStyles[S.editingElement]) S
                 .designStyles[S.editingElement] = {}; S.designStyles[S.editingElement][prop] = val;
-            saveDS();
+            saveDS(S.editingElement);
             refreshPreview(); }
 
         function setAlignment(a) { updateStyle('align', a); }
@@ -2127,47 +2199,48 @@
         function adjustMargin(side, delta) { const t = S.marginSide === 'front' ? S.designStyles.margins.front : S
                 .designStyles.margins.back; let n = (t[side] || 0) + delta; if (n < 0) n = 0; if (n > 20) n = 20; t[
                 side] = n;
-            saveDS();
+            saveDS('margins');
             refreshPreview();
             renderDesign(); }
 
         function updateMarginFromInput(side, val) { const t = S.marginSide === 'front' ? S.designStyles.margins.front :
                 S.designStyles.margins.back; let n = parseInt(val); if (isNaN(n)) n = 0; if (n < 0) n = 0; if (n > 20) n =
                 20; t[side] = n;
-            saveDS();
+            saveDS('margins');
             refreshPreview(); }
 
         function adjustSignatureSpace(delta) { let n = (S.designStyles.signatureSpace || 0) + delta; if (n < 0) n = 0; if (
                 n > 50) n = 50; S.designStyles.signatureSpace = n;
-            saveDS();
+            saveDS('signatureSpace');
             refreshPreview();
             renderDesign(); }
 
         function updateSignatureSpaceFromInput(val) { let n = parseInt(val); if (isNaN(n)) n = 0; if (n < 0) n = 0; if (n >
                 50) n = 50; S.designStyles.signatureSpace = n;
-            saveDS();
+            saveDS('signatureSpace');
             refreshPreview(); }
 
         function updateBgOpacity(val) { S.designStyles.bgOpacity = parseInt(val);
-            saveDS(); const lbl = document.getElementById('bgOpacityVal'); if (lbl) lbl.textContent = val + '%';
+            saveDS('bgOpacity'); const lbl = document.getElementById('bgOpacityVal'); if (lbl) lbl.textContent = val +
+                '%';
             refreshPreview(); }
 
         function updateBgFit(val) { S.designStyles.bgFit = val;
-            saveDS();
+            saveDS('bgFit');
             refreshPreview(); }
 
         function updateLogoScale(val) { S.designStyles.logoScale = parseInt(val);
-            saveDS();
+            saveDS('logoScale');
             refreshPreview();
             renderDesign(); }
 
         function updatePhotoScale(val) { S.designStyles.photoScale = Math.max(50, Math.min(150, parseInt(val) || 100));
-            saveDS();
+            saveDS('photoScale');
             refreshPreview();
             renderDesign(); }
 
         function updateQrScale(val) { S.designStyles.qrScale = Math.max(50, Math.min(500, parseInt(val) || 100));
-            saveDS();
+            saveDS('qrScale');
             refreshPreview();
             renderDesign(); }
 
@@ -2176,12 +2249,12 @@
                 y: 0 }; return S.designStyles[key]; }
 
         function updateOffset(element, axis, delta) { const off = getOffset(element); off[axis] = (off[axis] || 0) + delta;
-            saveDS();
+            saveDS(element + 'Offset');
             refreshPreview();
             renderDesign(); }
 
         function resetOffset(element) { const key = element + 'Offset'; S.designStyles[key] = { x: 0, y: 0 };
-            saveDS();
+            saveDS(key);
             refreshPreview();
             renderDesign(); }
 
@@ -2190,14 +2263,14 @@
             const ds = S.designStyles,
                 cur = ds[S.editingElement] || {},
                 m = (S.marginSide === 'front' ? ds.margins.front : ds.margins.back);
-            const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT/Ciclo', studentName: 'Alumno',
-                photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
+            const names = { schoolName: 'Escuela', subtitle: 'Subtítulo', infoLine: 'CCT', studentName: 'Alumno',
+                logo: 'Escudo', photo: 'Foto', qr: 'QR', idLabel: 'ID', sello: 'Sello', firma: 'Firma',
                 dataLabel: 'Etiquetas', dataValueGrado: 'Valor: Grado', dataValueGrupo: 'Valor: Grupo',
                 dataValueTurno: 'Valor: Turno', dataValueVigencia: 'Valor: Vigencia', dataDivider: 'Líneas divisoras',
                 backTitle: 'Título rev.', backFieldLabel: 'Campos rev. (etiquetas)', backFieldValue: 'Campos rev. (valores)',
                 alergiasLine: 'Línea de Alergias', sangreLine: 'Línea de Sangre', backDivider: 'Línea divisoria (reverso)',
                 directorName: 'Director', directorInfo: 'Cargo', directorAddr: 'Dirección' };
-            const isImageElement = ['photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
+            const isImageElement = ['logo', 'photo', 'qr', 'sello', 'firma'].includes(S.editingElement);
             const isColorOnlyElement = ['dataDivider', 'alergiasLine', 'sangreLine', 'backDivider'].includes(S
                 .editingElement);
 
@@ -2243,19 +2316,49 @@
                     </div>
                     <div class="card">
                         <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Fondo</div></div>
-                        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:14px;">
-                            <div style="flex:1; min-width:200px;">
-                                <button class="btn btn-navy" onclick="document.getElementById('bgInput').click()">📤 Subir diseño</button>
-                                ${S.bgImage ? '<button class="btn btn-err" onclick="removeBg()">Quitar fondo</button>' : ''}
+                        <div style="display:flex; gap:20px; flex-wrap:wrap;">
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; color:var(--navy); margin-bottom:8px; font-size:13px;">Frente</div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('bgInput').click()">📤 Subir diseño</button>
+                                ${S.bgImage ? '<button class="btn btn-err btn-sm" onclick="removeBg()">Quitar</button>' : ''}
+                                ${S.bgImage ? `
+                                <div style="margin:10px 0;"><img src="${S.bgImage}" style="max-width:100%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:contain;"></div>
+                                ${(() => { const o = getOffset('bgImage'); return `
+                                <div class="move-btn-group">
+                                    <button onclick="updateOffset('bgImage','y',-2)" title="Arriba">↑</button>
+                                    <button onclick="updateOffset('bgImage','x',-2)" title="Izquierda">←</button>
+                                    <button onclick="updateOffset('bgImage','x',2)" title="Derecha">→</button>
+                                    <button onclick="updateOffset('bgImage','y',2)" title="Abajo">↓</button>
+                                    <button class="pos-reset" onclick="resetOffset('bgImage')" title="Centrar (0,0)">⟳</button>
+                                    <span style="font-size:11px; color:var(--text-2); margin-left:4px;">X: ${o.x} Y: ${o.y}</span>
+                                </div>`; })()}
+                                ` : '<div style="color:var(--text-3); font-size:12px; margin-top:8px;">Sin fondo personalizado</div>'}
+                            </div>
+                            <div style="flex:1; min-width:220px;">
+                                <div style="font-weight:700; color:var(--navy); margin-bottom:8px; font-size:13px;">Reverso</div>
+                                <button class="btn btn-navy btn-sm" onclick="document.getElementById('bgBackInput').click()">📤 Subir diseño</button>
+                                ${S.bgImageBack ? '<button class="btn btn-err btn-sm" onclick="removeBgBack()">Quitar</button>' : ''}
+                                ${S.bgImageBack ? `
+                                <div style="margin:10px 0;"><img src="${S.bgImageBack}" style="max-width:100%; max-height:100px; border-radius:8px; border:1px solid var(--border); object-fit:contain;"></div>
+                                ${(() => { const o = getOffset('bgImageBack'); return `
+                                <div class="move-btn-group">
+                                    <button onclick="updateOffset('bgImageBack','y',-2)" title="Arriba">↑</button>
+                                    <button onclick="updateOffset('bgImageBack','x',-2)" title="Izquierda">←</button>
+                                    <button onclick="updateOffset('bgImageBack','x',2)" title="Derecha">→</button>
+                                    <button onclick="updateOffset('bgImageBack','y',2)" title="Abajo">↓</button>
+                                    <button class="pos-reset" onclick="resetOffset('bgImageBack')" title="Centrar (0,0)">⟳</button>
+                                    <span style="font-size:11px; color:var(--text-2); margin-left:4px;">X: ${o.x} Y: ${o.y}</span>
+                                </div>`; })()}
+                                ` : '<div style="color:var(--text-3); font-size:12px; margin-top:8px;">Sin fondo propio: usa el del frente</div>'}
                             </div>
                         </div>
-                        ${S.bgImage ? `
-                        <div style="margin-bottom:12px;">
-                            <img src="${S.bgImage}" style="max-width:100%; max-height:120px; border-radius:8px; border:1px solid var(--border); object-fit:contain;">
+                        ${(S.bgImage || S.bgImageBack) ? `
+                        <div style="margin-top:16px; padding-top:12px; border-top:1px solid var(--border);">
+                            <div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div>
+                            <div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div>
+                            <div style="font-size:11px; color:var(--text-2); margin-top:6px;">La opacidad y el ajuste aplican por igual al frente y al reverso.</div>
                         </div>
-                        <div><label>Opacidad (<span id="bgOpacityVal">${ds.bgOpacity||35}</span>%)</label><input type="range" min="0" max="100" value="${ds.bgOpacity||35}" oninput="updateBgOpacity(this.value)"></div>
-                        <div><label>Ajustar</label><select onchange="updateBgFit(this.value)"><option value="cover" ${ds.bgFit==='cover'?'selected':''}>Cubrir</option><option value="contain" ${ds.bgFit==='contain'?'selected':''}>Contener</option><option value="fill" ${ds.bgFit==='fill'?'selected':''}>Rellenar</option></select></div>
-                        ` : '<div style="color:var(--text-3); font-size:13px;">Sin fondo personalizado</div>'}
+                        ` : ''}
                     </div>
                     <div class="card">
                         <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Sello (frente)</div><label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text-2); cursor:pointer;"><input type="checkbox" ${ds.selloEnabled!==false?'checked':''} onchange="toggleSelloEnabled(this.checked)"> Habilitado</label></div>
@@ -2313,6 +2416,7 @@
                         </select>
                         ${isImageElement ? (() => {
                             const cfgMap = {
+                                logo: { label: 'el escudo', scaleKey: 'logoScale', fn: 'updateLogoScale', max: 150 },
                                 photo: { label: 'la foto', scaleKey: 'photoScale', fn: 'updatePhotoScale', max: 150 },
                                 qr: { label: 'el código QR', scaleKey: 'qrScale', fn: 'updateQrScale', max: 500 },
                                 sello: { label: 'el sello', scaleKey: 'selloScale', fn: 'updateSelloScale', max: 500 },
@@ -2320,7 +2424,8 @@
                             };
                             const c = cfgMap[S.editingElement];
                             const val = ds[c.scaleKey] || 100;
-                            const qrOff = S.editingElement === 'qr' ? getOffset('qr') : null;
+                            const movable = ['logo', 'photo', 'qr'].includes(S.editingElement);
+                            const mOff = movable ? getOffset(S.editingElement) : null;
                             return `
                         <div class="inline-style-bar">
                             <label>Tamaño de ${c.label}</label>
@@ -2329,21 +2434,21 @@
                                 <input type="number" value="${val}" min="50" max="${c.max}" style="width:55px;text-align:center;" onchange="${c.fn}(this.value)">
                                 <button onclick="${c.fn}((${val}) + 5)">+</button>
                             </div>
-                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original, solo agranda el cuadro QR, no el texto ID)</span>
+                            <span style="font-size:11px; color:var(--text-2);">% (100% = tamaño original${S.editingElement==='qr'?', solo agranda el cuadro QR, no el texto ID':''})</span>
                         </div>
-                        ${S.editingElement==='qr' ? `
+                        ${movable ? `
                         <div style="margin-top:10px; border-top:1px solid var(--border); padding-top:10px;">
-                            <label style="font-weight:600; font-size:12px; color:var(--text-2);">Mover:</label>
+                            <label style="font-weight:600; font-size:12px; color:var(--text-2);">Ajusta la posición de cada elemento. Cada flecha mueve 2 píxeles.</label>
                             <div class="move-btn-group">
-                                <button onclick="updateOffset('qr','y',-2)" title="Arriba">↑</button>
-                                <button onclick="updateOffset('qr','x',-2)" title="Izquierda">←</button>
-                                <button onclick="updateOffset('qr','x',2)" title="Derecha">→</button>
-                                <button onclick="updateOffset('qr','y',2)" title="Abajo">↓</button>
-                                <button class="pos-reset" onclick="resetOffset('qr')" title="Centrar (0,0)">⟳</button>
-                                <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${qrOff.x}  Y: ${qrOff.y}</span>
+                                <button onclick="updateOffset('${S.editingElement}','y',-2)" title="Arriba">↑</button>
+                                <button onclick="updateOffset('${S.editingElement}','x',-2)" title="Izquierda">←</button>
+                                <button onclick="updateOffset('${S.editingElement}','x',2)" title="Derecha">→</button>
+                                <button onclick="updateOffset('${S.editingElement}','y',2)" title="Abajo">↓</button>
+                                <button class="pos-reset" onclick="resetOffset('${S.editingElement}')" title="Centrar (0,0)">⟳</button>
+                                <span style="font-size:12px; color:var(--text-2); margin-left:6px;">X: ${mOff.x}  Y: ${mOff.y}</span>
                             </div>
                         </div>
-                        <div style="font-size:11px; color:var(--text-2); margin-top:6px;">Estas flechas mueven el QR junto con el texto "ID: ...". Para cambiar el color/tamaño del texto ID por separado, selecciona <strong>ID</strong> en el menú de arriba.</div>
+                        ${S.editingElement==='qr' ? '<div style="font-size:11px; color:var(--text-2); margin-top:6px;">Estas flechas mueven el QR junto con el texto "ID: ...". Para cambiar el color/tamaño del texto ID por separado, selecciona <strong>ID</strong> en el menú de arriba.</div>' : ''}
                         ` : ''}
                             `;
                         })() : isColorOnlyElement ? `
@@ -2364,11 +2469,24 @@
                             </div>
                             <label>Color</label><input type="color" value="${cur.color||N}" style="width:36px;height:30px;" onchange="updateStyle('color',this.value)">
                             <label><input type="checkbox" ${cur.bold?'checked':''} onchange="updateStyle('bold',this.checked)"> Negrita</label>
+                            <label><input type="checkbox" ${cur.uppercase?'checked':''} onchange="updateStyle('uppercase',this.checked)"> MAYÚSCULAS</label>
                             <label>Alin.</label>
                             <div class="align-btns">
                                 ${['left','center','right','justify'].map(a=>`<button class="${cur.align===a?'active':''}" onclick="setAlignment('${a}')">${a[0].toUpperCase()}</button>`).join('')}
                             </div>
                         </div>
+                        ${S.editingElement==='schoolName' ? `
+                        <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
+                            <label><input type="checkbox" ${ds.schoolNameEnabled!==false?'checked':''} onchange="toggleSchoolNameEnabled(this.checked)"> Mostrar el nombre de la escuela</label>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Desactívalo si ya subiste el nombre de la escuela como parte de la imagen de fondo.</div>
+                        ` : ''}
+                        ${S.editingElement==='subtitle' ? `
+                        <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
+                            <label><input type="checkbox" ${ds.subtitleEnabled!==false?'checked':''} onchange="toggleSubtitleEnabled(this.checked)"> Mostrar el subtítulo</label>
+                        </div>
+                        <div style="font-size:11px; color:var(--text-2); margin-top:4px;">Desactívalo si ya subiste el subtítulo como parte de la imagen de fondo.</div>
+                        ` : ''}
                         <div class="inline-style-bar" style="margin-top:6px; border-top:1px solid var(--border); padding-top:6px;">
                             <label>Color de fondo</label><input type="color" value="${(cur.bgColor&&cur.bgColor!=='transparent')?cur.bgColor:'#ffffff'}" style="width:36px;height:30px;" onchange="updateStyle('bgColor',this.value)">
                             <button class="btn btn-out btn-sm" onclick="updateStyle('bgColor','transparent')" title="Quitar el color de fondo" ${(!cur.bgColor||cur.bgColor==='transparent')?'disabled':''}>✕ Quitar fondo</button>
@@ -2502,8 +2620,189 @@
                         <div id="genClearWrap">${selectedStudentId ? `<button class="btn btn-out" onclick="clearSelection()">✕ Limpiar</button>` : ''}</div>
                     </div>
                     <div id="genPreview"></div>
+                    <div class="card" id="batchCard">
+                        <div class="card-hdr"><div class="card-ttl">🖨️ Impresión por lote</div></div>
+                        <div id="batchFilters" style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                            <select id="batchGrado" class="input-modern" style="flex:1;min-width:140px;" onchange="batchGradoChanged()"></select>
+                            <select id="batchGrupo" class="input-modern" style="flex:1;min-width:140px;" onchange="refreshBatch()"></select>
+                            <input type="text" id="batchSearch" class="input-modern" style="flex:2;min-width:180px;" placeholder="🔍 Filtrar por nombre..." autocomplete="off" oninput="refreshBatch()">
+                        </div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:12px;">
+                            <button class="btn btn-out" onclick="batchSelectAll()">☑ Seleccionar todos los mostrados</button>
+                            <button class="btn btn-out" onclick="batchSelectNone()">☐ Quitar selección</button>
+                            <span style="display:inline-flex;gap:6px;align-items:center;">
+                                <input type="number" id="batchN" class="input-modern" style="width:80px;" min="1" value="5">
+                                <button class="btn btn-out" onclick="batchSelectFirst()">Seleccionar los primeros N</button>
+                            </span>
+                        </div>
+                        <div id="batchList" style="max-height:320px;overflow:auto;border:1px solid var(--border);border-radius:10px;"></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;">
+                            <span id="batchCount" style="font-weight:600;"></span>
+                            <select id="batchSide" class="input-modern" style="width:auto;">
+                                <option value="">Frente y reverso</option>
+                                <option value="front">Solo frente</option>
+                                <option value="back">Solo reverso</option>
+                            </select>
+                            <button class="btn btn-navy" onclick="printBatch(false)">🖨️ Imprimir seleccionados</button>
+                            <button class="btn btn-out" onclick="printBatch(true)">🖨️ Imprimir todos los mostrados</button>
+                        </div>
+                    </div>
                 `;
+            initBatch();
             updateSearchResults();
+        }
+
+        // ===== IMPRESIÓN POR LOTE =====
+        // Siempre parte de getVisibleStudents(): el secretario solo puede imprimir los grupos que tiene asignados.
+        const batchSel = new Set();
+
+        function batchSorted(list) {
+            return list.slice().sort((a, b) =>
+                String(a.grado || '').localeCompare(String(b.grado || ''), 'es', { numeric: true }) ||
+                String(a.grupo || '').localeCompare(String(b.grupo || ''), 'es', { numeric: true }) ||
+                String(a.nombre || '').localeCompare(String(b.nombre || ''), 'es'));
+        }
+
+        function initBatch() {
+            const gs = document.getElementById('batchGrado');
+            if (!gs) return;
+            const vis = getVisibleStudents();
+            const grados = [...new Set(vis.map(s => s.grado).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }));
+            const cur = gs.value;
+            gs.innerHTML = '<option value="">Todos los grados</option>' + grados.map(g => `<option value="${escH(g)}">${escH(g)}° grado</option>`).join('');
+            if (grados.includes(cur)) gs.value = cur;
+            fillBatchGrupos();
+            refreshBatch();
+        }
+
+        function fillBatchGrupos() {
+            const gs = document.getElementById('batchGrado'), ps = document.getElementById('batchGrupo');
+            if (!gs || !ps) return;
+            const vis = getVisibleStudents().filter(s => !gs.value || String(s.grado) === gs.value);
+            const grupos = [...new Set(vis.map(s => s.grupo).filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b), 'es', { numeric: true }));
+            const cur = ps.value;
+            ps.innerHTML = '<option value="">Todos los grupos</option>' + grupos.map(g => `<option value="${escH(g)}">Grupo ${escH(g)}</option>`).join('');
+            if (grupos.includes(cur)) ps.value = cur;
+        }
+
+        function batchGradoChanged() { fillBatchGrupos(); refreshBatch(); }
+
+        function batchFiltered() {
+            const g = document.getElementById('batchGrado')?.value || '';
+            const p = document.getElementById('batchGrupo')?.value || '';
+            const q = (document.getElementById('batchSearch')?.value || '').trim().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+            return batchSorted(getVisibleStudents().filter(s =>
+                (!g || String(s.grado) === g) && (!p || String(s.grupo) === p) &&
+                (!q || String(s.nombre || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q))));
+        }
+
+        function refreshBatch() {
+            const box = document.getElementById('batchList');
+            if (!box) return;
+            const vis = new Set(getVisibleStudents().map(s => s.id));
+            [...batchSel].forEach(id => { if (!vis.has(id)) batchSel.delete(id); });
+            const list = batchFiltered();
+            box.innerHTML = list.length ? list.map(s => `
+                <label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--border);cursor:pointer;">
+                    <input type="checkbox" ${batchSel.has(s.id) ? 'checked' : ''} onchange="batchToggle(${s.id}, this.checked)">
+                    <span style="flex:1;">${escH(s.nombre)}</span>
+                    <span style="color:var(--text-3,#64748b);font-size:12px;">${escH(s.grado)}° ${escH(s.grupo)}</span>
+                </label>`).join('') : '<div style="padding:16px;text-align:center;color:#64748b;">Sin alumnos con estos filtros</div>';
+            updateBatchCount(list.length);
+        }
+
+        function updateBatchCount(shown) {
+            const el = document.getElementById('batchCount');
+            if (el) el.textContent = `${batchSel.size} seleccionado(s)` + (shown != null ? ` · ${shown} mostrado(s)` : '');
+        }
+
+        function batchToggle(id, on) { if (on) batchSel.add(id); else batchSel.delete(id); updateBatchCount(batchFiltered().length); }
+        function batchSelectAll() { batchFiltered().forEach(s => batchSel.add(s.id)); refreshBatch(); }
+        function batchSelectNone() { batchSel.clear(); refreshBatch(); }
+        function batchSelectFirst() {
+            const n = parseInt(document.getElementById('batchN').value, 10);
+            if (!n || n < 1) { toast('Escribe cuántos quieres seleccionar', 'wrn'); return; }
+            batchSel.clear();
+            batchFiltered().slice(0, n).forEach(s => batchSel.add(s.id));
+            refreshBatch();
+        }
+
+        function printBatch(allShown) {
+            const vis = getVisibleStudents();
+            let list;
+            if (allShown) list = batchFiltered();
+            else list = batchSorted(vis.filter(s => batchSel.has(s.id)));
+            if (!list.length) { toast('No hay alumnos para imprimir. Selecciona al menos uno.', 'wrn'); return; }
+            if (allShown && list.length > 30 && !confirm(`Se imprimirán ${list.length} credenciales. ¿Continuar?`)) return;
+            const side = document.getElementById('batchSide')?.value || '';
+            const fw = 285, fh = 378;
+            let html = '<div style="display:flex;flex-wrap:wrap;align-content:flex-start;align-items:flex-start;">';
+            list.forEach(s => {
+                html += '<div class="batch-item" style="display:flex;flex-direction:row;gap:0;margin:0 6px 6px 0;break-inside:avoid;page-break-inside:avoid;">';
+                if (!side || side === 'front') html += `<div>${credCard(s, S.config, S.logo, S.bgImage, fw, fh, 'front')}</div>`;
+                if (!side || side === 'back') html += `<div>${credCard(s, S.config, S.logo, S.bgImageBack || S.bgImage, fw, fh, 'back')}</div>`;
+                html += '</div>';
+            });
+            html += '</div>';
+            const w = window.open('', '_blank', 'width=1000,height=800');
+            if (!w) { toast('Permite ventanas emergentes', 'err'); return; }
+            const appCSS = Array.from(document.querySelectorAll('style')).map(el => el.textContent).join('\n');
+            const printExtra = `
+                body { font-family: Arial; background: #CBD5E1 !important; padding: 16px; display: block !important;
+                    overflow: auto !important; height: auto !important; }
+                @page { margin: 8mm; }
+                @media print {
+                    body { background: white !important; padding: 0; }
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+                }
+            `;
+            w.document.write(
+                `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Credenciales (${list.length})</title><script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"><\/script><style>${appCSS}\n${printExtra}</style></head><body>${html}<script>${autofitText.toString()}\n${autofitBackFields.toString()}\ndocument.querySelectorAll('[id^="qr-"]').forEach(el=>{if(!el.hasChildNodes()){try{new QRCode(el,{text:el.id.replace('qr-',''),width:300,height:300,colorDark:'#0B2D6B',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.H})}catch(e){}}});autofitBackFields(document.body);setTimeout(()=>window.print(),1200);<\/script></body></html>`
+            );
+            w.document.close();
+        }
+
+        // Página Dashboard (solo administradores): cuántos alumnos ha registrado cada secretario,
+        // y qué grado/grupo tiene asignado. Se actualiza en tiempo real junto con la lista de alumnos.
+        function renderDashboardPage() {
+            const container = document.getElementById('dashboardPage');
+            if (!container) return;
+            container.innerHTML = `
+                <div class="pg-hdr"><div><div class="pg-ttl">Dashboard</div><div class="pg-sub">Alumnos registrados por cada secretario</div></div></div>
+                <div id="secretaryDashboard"></div>
+            `;
+            renderSecretaryDashboard();
+        }
+
+        function renderSecretaryDashboard() {
+            const el = document.getElementById('secretaryDashboard');
+            if (!el) return;
+            const secretarios = Object.values(S.usuarios || {}).filter(u => u.role === 'secretario');
+            const rows = secretarios.map(u => {
+                const hasGrupos = u.grupos && u.grupos.length > 0;
+                const count = hasGrupos ? S.students.filter(s => u.grupos.includes(s.grupo)).length : 0;
+                const registrados = S.students.filter(s => s.createdBy === u.usuario).length;
+                const grupos = hasGrupos ? u.grupos.join(', ') : 'Sin grupo asignado';
+                return { usuario: u.usuario, grupos, count, registrados, active: u.active !== false, hasGrupos };
+            }).sort((a, b) => a.usuario.localeCompare(b.usuario));
+            const totalRows = rows.map(r => `
+                <div style="display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
+                    <div style="flex:1; min-width:140px;">
+                        <div style="font-weight:700; color:var(--navy);">${escH(r.usuario)}${!r.active?' <span style="font-size:11px; color:var(--text-3);">(inactivo)</span>':''}</div>
+                        <div style="font-size:11px; color:var(--text-2);">Grado/Grupo a cargo: ${escH(r.grupos)}${r.hasGrupos?` · registró ${r.registrados}`:''}</div>
+                    </div>
+                    <div style="font-size:20px; font-weight:800; color:var(--navy); min-width:50px; text-align:center;">${r.hasGrupos?r.count:'—'}</div>
+                    <div style="font-size:11px; color:var(--text-2); min-width:110px;">alumno${r.count===1?'':'s'} a su cargo</div>
+                </div>
+            `).join('');
+            el.innerHTML = `
+                <div class="card">
+                    <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Alumnos a cargo de cada secretario</div></div>
+                    ${totalRows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no hay secretarios dados de alta.</div>'}
+                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">La cantidad es de alumnos que pertenecen a su grado/grupo asignado, no solo los que él o ella registró. Asigna un grupo en Configuración → Usuarios para que aparezca aquí.</div>
+                </div>
+            `;
         }
 
         // Actualiza solo los resultados de búsqueda y la vista previa, SIN reconstruir la página
@@ -2527,7 +2826,7 @@
                     resultsContainer.innerHTML = filtered.map(s => `
                             <div class="search-result-item" data-id="${s.id}" onclick="selectStudent(${s.id})">
                                 <span><strong>${escH(s.nombre)}</strong> <span class="badge bdg-b">${s.grado||'?'}°</span> <span class="badge bdg-g">${s.grupo||'?'}</span></span>
-                                <span style="font-size:12px; color:var(--text-2);">ID: ${s.matricula||s.id}</span>
+                                <span style="font-size:12px; color:var(--text-2);">ID: ${s.codigoQR||s.matricula||s.id}</span>
                             </div>
                         `).join('');
                     resultsContainer.classList.add('show');
@@ -2546,8 +2845,8 @@
                 if (st) {
                     previewArea.innerHTML = `
                             <div class="cred-prev-wrap">
-                                <div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,380,'front')}</div></div>
-                                <div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,380,'back')}</div></div>
+                                <div><div class="cred-side-lbl">FRENTE</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImage,240,318,'front')}</div></div>
+                                <div><div class="cred-side-lbl">REVERSO</div><div class="cred-frame">${credCard(st,S.config,S.logo,S.bgImageBack||S.bgImage,240,318,'back')}</div></div>
                             </div>
                             <div style="margin-top:16px; display:flex; gap:10px; justify-content:center;">
                                 <button class="btn btn-navy" onclick="printCredential(${st.id})">🖨️ Imprimir</button>
@@ -2655,6 +2954,11 @@
                 idHint.textContent = 'Asignado automáticamente al guardar.'; }
             if (s.foto) setFotoPreview(s.foto);
             else removeFoto();
+            const qrWrap = document.getElementById('f-codigoQR-wrap'),
+                qrField = document.getElementById('f-codigoQR');
+            const isAdmin = S.currentUser && S.currentUser.role === 'admin';
+            if (isAdmin && id) { qrWrap.style.display = 'grid';
+                qrField.value = s.codigoQR || ''; } else { qrWrap.style.display = 'none'; }
             document.getElementById('f-nombre').value = s.nombre || '';
             document.getElementById('f-grado').value = s.grado || '';
             document.getElementById('f-grupo').value = s.grupo || '';
@@ -2684,23 +2988,19 @@
             return n;
         }
 
+        function regenerarCodigoQRModal() {
+            const excluir = S.editId ? String(S.editId) : null;
+            const usados = todosLosCodigosQREnUso();
+            const s = S.editId ? S.students.find(s => s.id === S.editId) : null;
+            if (s && s.codigoQR) usados.delete(String(s.codigoQR).toUpperCase());
+            document.getElementById('f-codigoQR').value = generarCodigoQR(usados);
+        }
+
         function saveStudent() {
             const n = document.getElementById('f-nombre').value.trim();
             if (!n) { toast('Nombre obligatorio', 'err'); return; }
             const idRaw = document.getElementById('f-id').value.trim();
-            let newId;
-            if (S.editId) {
-                newId = parseInt(idRaw, 10);
-                if (!idRaw || isNaN(newId)) { toast('El ID debe ser un número', 'err'); return; }
-                const dup = S.students.find(s => s.id === newId && s.id !== S.editId);
-                if (dup) { toast(`Ese ID ya lo usa "${dup.nombre}"`, 'err'); return; }
-            } else {
-                newId = parseInt(idRaw, 10);
-                if (isNaN(newId)) newId = computeNextId();
-            }
-            const data = {
-                id: newId,
-                matricula: String(newId),
+            const baseData = {
                 nombre: n,
                 grado: document.getElementById('f-grado').value.trim(),
                 grupo: document.getElementById('f-grupo').value.trim().toUpperCase(),
@@ -2713,19 +3013,78 @@
                 alergias: document.getElementById('f-alergias').value.trim(),
                 foto: window._currentFoto || ''
             };
-            if (S.editId) S.students = S.students.map(s => s.id === S.editId ? { ...s, ...data } : s);
-            else S.students.push(data);
-            saveSt();
-            closeModal();
-            renderStudents();
-            toast(`Alumno guardado con ID: ${newId}`);
+            const btn = document.querySelector('#studentModal .btn-navy, .modal .btn-navy');
+
+            if (S.editId) {
+                // Editar un alumno existente: no hay riesgo de choque de ID con otro secretario,
+                // porque cada quien escribe solo en la ruta de ESE alumno, nunca en la lista completa.
+                const newId = parseInt(idRaw, 10);
+                if (!idRaw || isNaN(newId)) { toast('El ID debe ser un número', 'err'); return; }
+                if (newId !== S.editId && S.students.some(s => s.id === newId && s.id !== S.editId)) {
+                    toast('Ese ID ya está en uso por otro alumno', 'err');
+                    return;
+                }
+                const oldId = S.editId;
+                const original = S.students.find(s => s.id === oldId);
+                const isAdmin = S.currentUser && S.currentUser.role === 'admin';
+                const qrField = document.getElementById('f-codigoQR');
+                let codigoQR = (original && original.codigoQR) || '';
+                if (isAdmin && qrField) {
+                    const editado = qrField.value.trim().toUpperCase();
+                    if (!editado) { toast('El código QR no puede quedar vacío', 'err'); return; }
+                    const enUso = S.students.some(s => s.id !== oldId && (s.codigoQR || '').toUpperCase() ===
+                        editado);
+                    if (enUso) { toast('Ese código QR ya está en uso por otro alumno', 'err'); return; }
+                    codigoQR = editado;
+                }
+                if (!codigoQR) codigoQR = generarCodigoQR();
+                const data = { ...baseData, id: newId, matricula: String(newId), createdBy: (original &&
+                        original.createdBy) || (S.currentUser ? S.currentUser.usuario : ''), codigoQR };
+                const write = newId === oldId ?
+                    db.ref('alumnos/' + newId).set(data) :
+                    db.ref('alumnos/' + newId).transaction(cur => cur === null ? data : undefined)
+                    .then(res => { if (!res.committed) throw new Error('Ese ID ya está en uso'); return db.ref(
+                        'alumnos/' + oldId).remove(); });
+                write.then(() => { toast(`Alumno actualizado con ID: ${newId}`);
+                        closeModal(); })
+                    .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+                return;
+            }
+
+            // Alumno nuevo: se reserva el ID con una transacción de Firebase, que es atómica en el
+            // servidor. Así, si dos secretarios agregan un alumno al mismo tiempo, nunca terminan
+            // escribiendo sobre el mismo ID y perdiendo el registro del otro.
+            baseData.createdBy = S.currentUser ? S.currentUser.usuario : '';
+            baseData.codigoQR = generarCodigoQR();
+            const manualId = parseInt(idRaw, 10);
+            const isManual = !isNaN(manualId);
+
+            function attempt(id, triesLeft) {
+                const data = { ...baseData, id, matricula: String(id) };
+                db.ref('alumnos/' + id).transaction(cur => cur === null ? data : undefined)
+                    .then(res => {
+                        if (!res.committed) {
+                            if (isManual) { toast(`El ID ${id} ya está en uso, elige otro`, 'err'); return; }
+                            if (triesLeft <= 0) { toast(
+                                'No se encontró un ID disponible, intenta de nuevo', 'err'); return; }
+                            attempt(id + 1 > 2024600 ? 2024001 : id + 1, triesLeft - 1);
+                            return;
+                        }
+                        toast(`Alumno guardado con ID: ${id}`);
+                        closeModal();
+                    })
+                    .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+            }
+            attempt(isManual ? manualId : computeNextId(), 30);
         }
 
-        function delStudent(id) { const s = S.students.find(s => s.id === id); if (!s || !confirm(
-                `¿Eliminar a "${s.nombre}"?`)) return; S.students = S.students.filter(s => s.id !== id);
-            saveSt();
-            renderStudents();
-            toast('Alumno eliminado', 'wrn'); }
+        function delStudent(id) {
+            const s = S.students.find(s => s.id === id);
+            if (!s || !confirm(`¿Eliminar a "${s.nombre}"?`)) return;
+            db.ref('alumnos/' + id).remove()
+                .then(() => toast('Alumno eliminado', 'wrn'))
+                .catch(err => toast('No se pudo eliminar: ' + err.message, 'err'));
+        }
 
         function renderConfig() {
             const cfg = S.config;
@@ -2775,7 +3134,7 @@
                     <div style="margin-top:14px; border-top:1px solid var(--border);">
                         ${rows || '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no has dado de alta usuarios.</div>'}
                     </div>
-                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">El usuario "${ADMIN_GENERAL.usuario}" es el administrador general y no puede modificarse ni eliminarse desde aquí. Un secretario sin grupos asignados ve a todos los alumnos (déjalo vacío solo si así lo quieres).</div>
+                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">Un secretario sin grupos asignados ve a todos los alumnos (déjalo vacío solo si así lo quieres).</div>
                 </div>
             `;
         }
@@ -2789,8 +3148,6 @@
                 .filter(Boolean);
             if (!usuario || !password) { toast('Usuario y contraseña son obligatorios', 'err'); return; }
             if (password.length < 6) { toast('La contraseña debe tener al menos 6 caracteres', 'err'); return; }
-            if (usuario.toLowerCase() === ADMIN_GENERAL.usuario.toLowerCase()) { toast(
-                'Ese nombre de usuario está reservado para el administrador general', 'err'); return; }
             const exists = Object.values(S.usuarios || {}).some(u => u.usuario.toLowerCase() === usuario
                 .toLowerCase());
             if (exists) { toast('Ese usuario ya existe', 'err'); return; }
@@ -2947,6 +3304,25 @@
             try { localStorage.setItem('cred_bg', ''); } catch (e) {}
             renderDesign(); }
 
+        function handleBgBackFile(inp) {
+            const f = inp.files[0];
+            if (!f) return;
+            if (!f.type.startsWith('image/')) { toast('Solo imágenes', 'err'); return; }
+            const r = new FileReader();
+            r.onload = ev => { S.bgImageBack = ev.target.result;
+                db.ref('configuracion/credenciales/bgImageBack').set(S.bgImageBack)
+                    .then(() => toast('Fondo del reverso guardado'))
+                    .catch(err => toast('No se pudo guardar: ' + err.message, 'err'));
+                renderDesign(); };
+            r.readAsDataURL(f);
+            inp.value = '';
+        }
+
+        function removeBgBack() { S.bgImageBack = '';
+            db.ref('configuracion/credenciales/bgImageBack').set('')
+                .catch(err => toast('No se pudo quitar el fondo: ' + err.message, 'err'));
+            renderDesign(); }
+
         // Quita el fondo blanco/casi blanco de una imagen (la vuelve transparente de verdad,
         // pixel por pixel) conservando intacto lo que no es blanco (escudo, texto, trazo de firma).
         // El resultado se guarda como PNG porque JPEG no admite transparencia.
@@ -3023,58 +3399,69 @@
             renderDesign(); }
 
         function updateSelloScale(val) { S.designStyles.selloScale = Math.max(50, Math.min(500, parseInt(val) || 100));
-            saveDS();
+            saveDS('selloScale');
             refreshPreview();
             renderDesign(); }
 
         function updateFirmaScale(val) { S.designStyles.firmaScale = Math.max(50, Math.min(500, parseInt(val) ||
             100));
-            saveDS();
+            saveDS('firmaScale');
             refreshPreview();
             renderDesign(); }
 
         function updateFirmaWidth(val) { S.designStyles.firmaWidthScale = Math.max(50, Math.min(300, parseInt(
             val) || 100));
-            saveDS();
+            saveDS('firmaWidthScale');
             refreshPreview();
             renderDesign(); }
 
         function toggleSelloEnabled(val) { S.designStyles.selloEnabled = val;
-            saveDS();
+            saveDS('selloEnabled');
             refreshPreview();
             renderDesign(); }
 
         function toggleFirmaEnabled(val) { S.designStyles.firmaEnabled = val;
-            saveDS();
+            saveDS('firmaEnabled');
+            refreshPreview();
+            renderDesign(); }
+
+        function toggleSchoolNameEnabled(val) { S.designStyles.schoolNameEnabled = val;
+            saveDS('schoolNameEnabled');
+            refreshPreview();
+            renderDesign(); }
+
+        function toggleSubtitleEnabled(val) { S.designStyles.subtitleEnabled = val;
+            saveDS('subtitleEnabled');
             refreshPreview();
             renderDesign(); }
 
         function updateAlergiasSplit(val) { S.designStyles.alergiasSangreSplit = Math.max(30, Math.min(80,
             parseInt(val) || 65));
-            saveDS();
+            saveDS('alergiasSangreSplit');
             refreshPreview();
             renderDesign(); }
 
         function updateSelloOpacity(val) { S.designStyles.selloOpacity = parseInt(val);
-            saveDS();
+            saveDS('selloOpacity');
             refreshPreview(); }
 
         function updateFirmaOpacity(val) { S.designStyles.firmaOpacity = parseInt(val);
-            saveDS();
+            saveDS('firmaOpacity');
             refreshPreview(); }
 
         // Inclinar sello/firma poco a poco, como una imagen en Word
         function updateRotation(element, delta) {
             const key = element + 'Rotation';
             S.designStyles[key] = (S.designStyles[key] || 0) + delta;
-            saveDS();
+            saveDS(key);
             refreshPreview();
             renderDesign();
         }
 
         function resetRotation(element) {
-            S.designStyles[element + 'Rotation'] = 0;
-            saveDS();
+            const key = element + 'Rotation';
+            S.designStyles[key] = 0;
+            saveDS(key);
             refreshPreview();
             renderDesign();
         }
@@ -3205,19 +3592,20 @@
             const s = S.students.find(s => s.id === id);
             if (!s) { toast('Alumno no encontrado', 'err'); return; }
             const fw = 285,
-                fh = 449;
-            let html = '';
+                fh = 378;
+            let html = '<div style="display:flex; flex-direction:row; align-items:flex-start; gap:0;">';
             if (!side || side === 'front') html +=
-                `<div style="margin-bottom:20px;">${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
+                `<div>${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'front')}</div>`;
             if (!side || side === 'back') html +=
-                `<div>${credCard(s,S.config,S.logo,S.bgImage,fw,fh,'back')}</div>`;
+                `<div>${credCard(s,S.config,S.logo,S.bgImageBack||S.bgImage,fw,fh,'back')}</div>`;
+            html += '</div>';
             const w = window.open('', '_blank', 'width=900,height=700');
             if (!w) { toast('Permite ventanas emergentes', 'err'); return; }
             // Se copia el CSS real de la app (en vez de una copia aparte) para que la impresión
             // luzca SIEMPRE igual a la vista previa de Diseño/Generar, sin importar qué cambie en el futuro.
             const appCSS = Array.from(document.querySelectorAll('style')).map(el => el.textContent).join('\n');
             const printExtra = `
-                body { font-family: Arial; background: #CBD5E1 !important; padding: 24px; display: flex; gap: 24px;
+                body { font-family: Arial; background: #CBD5E1 !important; padding: 24px; display: flex;
                     justify-content: center; overflow: auto !important; height: auto !important; }
                 @media print {
                     body { background: white !important; padding: 0; }
@@ -3255,40 +3643,29 @@
 
         document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
-        // Al iniciar: el admin general se restaura directo desde este dispositivo; el resto de
-        // usuarios se valida contra la sesión real de Firebase Authentication (más seguro,
+        // Al iniciar: se valida contra la sesión real de Firebase Authentication (más seguro,
         // porque revalida el usuario en vez de confiar ciegamente en lo guardado localmente)
         (function initSession() {
-            const saved = getSession();
-            if (saved && saved.usuario && saved.superAdmin) {
-                S.currentUser = saved;
-                document.getElementById('loginScreen').style.display = 'none';
-                document.getElementById('app').style.display = 'grid';
-                applyRolePermissions();
-            } else {
-                document.getElementById('loginScreen').style.display = 'flex';
-                document.getElementById('app').style.display = 'none';
-                auth.onAuthStateChanged(user => {
-                    if (S.currentUser && S.currentUser.superAdmin) return;
-                    if (user) {
-                        db.ref('usuarios/' + user.uid).once('value').then(snap => {
-                            const u = snap.val();
-                            if (u && u.active !== false) {
-                                setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
-                                        .grupos || [],
-                                    superAdmin: false, uid: user.uid });
-                                showApp();
-                            } else {
-                                auth.signOut().catch(() => {});
-                                clearSession();
-                                showLogin(u ? 'Tu acceso fue revocado por un administrador.' : null);
-                            }
-                        });
-                    } else {
-                        clearSession();
-                    }
-                });
-            }
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('app').style.display = 'none';
+            auth.onAuthStateChanged(user => {
+                if (user) {
+                    db.ref('usuarios/' + user.uid).once('value').then(snap => {
+                        const u = snap.val();
+                        if (u && u.active !== false) {
+                            setSession({ usuario: u.usuario, role: u.role, canDesign: !!u.canDesign, grupos: u
+                                .grupos || [], uid: user.uid });
+                            showApp();
+                        } else {
+                            auth.signOut().catch(() => {});
+                            clearSession();
+                            showLogin(u ? 'Tu acceso fue revocado por un administrador.' : null);
+                        }
+                    });
+                } else {
+                    clearSession();
+                }
+            });
         })();
 
         load();
