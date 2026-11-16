@@ -2771,7 +2771,7 @@
             const container = document.getElementById('dashboardPage');
             if (!container) return;
             container.innerHTML = `
-                <div class="pg-hdr"><div><div class="pg-ttl">Dashboard</div><div class="pg-sub">Ubicación de los alumnos y alumnos registrados por cada secretario</div></div></div>
+                <div class="pg-hdr"><div><div class="pg-ttl">Dashboard</div><div class="pg-sub">Procedencia de los alumnos por colonia y alumnos a cargo de cada secretario</div></div></div>
                 <div id="locationDashboard" style="margin-bottom:16px;"></div>
                 <div id="secretaryDashboard"></div>
             `;
@@ -2809,113 +2809,205 @@
             `;
         }
 
-        // ── Ubicación de los alumnos (Dashboard) ─────────────────────────────────────────
-        // El domicilio es texto libre ("Calle, Número, Colonia, C.P."), así que aquí se deduce
-        // la colonia/localidad de cada alumno para poder contarlos y sacar porcentajes.
-        const LOC_KW = new Set(['col', 'colonia', 'fracc', 'fraccionamiento', 'barrio', 'agencia', 'ejido', 'paraje', 'unidad', 'infonavit']);
+        // ── Procedencia de los alumnos (Dashboard) ───────────────────────────────────────
+        // El domicilio es texto libre ("Calle, Número, Colonia, C.P.") y cada quien lo capturó
+        // distinto, así que aquí se deduce la colonia de cada alumno y se juntan las variantes
+        // ("El Mirador", "Colonia El Mirador", "Col. Mirador", errores de dedo…) en una sola.
+        const LOC_KW = new Set(['col', 'colonia', 'fracc', 'frac', 'fraccionamiento', 'barrio', 'agencia', 'ejido', 'paraje', 'unidad', 'infonavit']);
+        const LOC_LEAD = new Set(['de', 'del', 'municipal', 'policia', 'habitacional']);
         const LOC_STREET = new Set(['calle', 'c', 'av', 'avenida', 'privada', 'priv', 'andador', 'callejon', 'carretera', 'carr', 'camino',
             'prol', 'prolongacion', 'cerrada', 'cda', 'boulevard', 'blvd', 'calzada', 'km', 'numero', 'num', 'no', 'int', 'ext', 'interior',
-            'exterior', 'mz', 'manzana', 'lt', 'lote', 'sn', 'casa', 'depto', 'esquina', 'esq', 'entre', 'domicilio', 'conocido']);
+            'exterior', 'mz', 'manzana', 'lt', 'lote', 'casa', 'depto', 'esquina', 'esq', 'entre', 'domicilio', 'conocido']);
         const LOC_TAIL = new Set(['oaxaca', 'oax', 'mexico', 'mex']);
         const LOC_SMALL = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y']);
+        const LOC_ART = new Set(['el', 'la', 'los', 'las']);
         const LOC_MUN = 'xoxocotlan';
+        const LOC_MUN_FILL = new Set(['santa', 'sta', 'cruz', 'municipio', 'de', 'cd', 'ciudad', 'villa', 'cabecera', 'municipal']);
+        const LOC_MUN_LABEL = 'Ciudad de Xoxocotlán';
+        const LOC_ABBR = { sta: 'santa', sto: 'santo', gpe: 'guadalupe', fco: 'francisco' };
         const locNorm = s => (s || '').toString().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-        const locWords = seg => seg.replace(/[.()":]/g, ' ').split(/\s+/).filter(Boolean)
-            .map(o => ({ o, n: locNorm(o) === 'xoxo' ? LOC_MUN : locNorm(o) }));
+        // Distancia de edición (con letras intercambiadas) para detectar errores de captura.
+        function locDist(a, b) {
+            const m = a.length, n = b.length; if (Math.abs(m - n) > 2) return 9;
+            const d = []; for (let i = 0; i <= m; i++) { d[i] = [i]; } for (let j = 0; j <= n; j++) d[0][j] = j;
+            for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++) {
+                const c = a[i - 1] === b[j - 1] ? 0 : 1;
+                d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + c);
+                if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+            }
+            return d[m][n];
+        }
+        const locIsKw = n => LOC_KW.has(n) || (n.length >= 6 && (locDist(n, 'colonia') <= 1 || locDist(n, 'agencia') <= 1)) ||
+            (n.length >= 12 && locDist(n, 'fraccionamiento') <= 2);
+        const locWords = seg => seg.replace(/[.()":]/g, ' ').split(/\s+/).map(o => {
+            let n = locNorm(o).replace(/[^a-z0-9#\/]/g, '');
+            // "Xoxo", "Xoxocotlan", "Xococotlan", "Xoxocatlán"… todo es el municipio.
+            if (/^xo[xc]o/.test(n)) n = LOC_MUN;
+            return { o: o.replace(/^[^0-9A-Za-zÀ-ÿ#]+|[^0-9A-Za-zÀ-ÿ]+$/g, ''), n: LOC_ABBR[n] || n };
+        }).filter(x => x.n);
 
-        // Convierte una lista de palabras en { key, label }. Quita "Oaxaca", "Oax." y el
-        // municipio cuando viene pegado al final ("La Paz Xoxocotlán Oax" → "La Paz").
+        // Convierte una lista de palabras en { key, label }. Quita "Col.", "Agencia de", "Oax."
+        // y el municipio cuando viene pegado ("Col. La Paz Sta. Cruz Xoxocotlán Oax" → "La Paz").
         function locName(words) {
             let w = words.slice();
             while (w.length && (LOC_TAIL.has(w[w.length - 1].n) || /^\d+$/.test(w[w.length - 1].n))) w.pop();
-            while (w.length && LOC_SMALL.has(w[w.length - 1].n)) w.pop();
-            const isMun = a => { const k = a.map(x => x.n).join(' ');
-                return k === LOC_MUN || k === 'santa cruz ' + LOC_MUN || k === 'sta cruz ' + LOC_MUN || k === 'municipio de ' + LOC_MUN; };
-            if (w.length > 1 && w[w.length - 1].n === LOC_MUN && !isMun(w)) {
-                w.pop();
-                if (w.length >= 2 && w[w.length - 1].n === 'cruz' && /^(santa|sta)$/.test(w[w.length - 2].n)) w.splice(-2);
-                while (w.length && LOC_SMALL.has(w[w.length - 1].n)) w.pop();
+            while (w.length && (locIsKw(w[0].n) || LOC_LEAD.has(w[0].n))) w.shift();
+            const isMun = a => a.some(x => x.n === LOC_MUN) && a.every(x => x.n === LOC_MUN || LOC_MUN_FILL.has(x.n));
+            if (w.length && isMun(w)) return { key: LOC_MUN, label: LOC_MUN_LABEL };
+            const im = w.findIndex(x => x.n === LOC_MUN);
+            if (im > 0) {
+                w = w.slice(0, im);
+                if (w.length >= 3 && w[w.length - 1].n === 'cruz' && w[w.length - 2].n === 'santa') w.splice(-2);
+                while (w.length && (LOC_SMALL.has(w[w.length - 1].n) || LOC_MUN_FILL.has(w[w.length - 1].n) && w[w.length - 1].n !== 'cruz' && w[w.length - 1].n !== 'santa')) w.pop();
             }
+            while (w.length && LOC_SMALL.has(w[w.length - 1].n)) w.pop();
             if (!w.length) return null;
-            if (isMun(w)) return { key: LOC_MUN, label: 'Xoxocotlán' };
-            const key = w.map(x => x.n).join(' ');
+            const kw = w.map(x => (x.n === 'sn' ? 'san' : x.n));
+            if (kw.length > 1 && LOC_ART.has(kw[0])) kw.shift();   // "El Mirador" = "Mirador"
+            const key = kw.join(' ');
             if (key.length < 3) return null;
-            const label = w.map((x, i) => { const l = x.o.toLowerCase();
+            const label = w.map((x, i) => { const l = (LOC_ABBR[locNorm(x.o)] || (x.n === 'sn' ? 'San' : x.o)).toLowerCase();
                 return (i > 0 && LOC_SMALL.has(x.n)) ? l : l.charAt(0).toUpperCase() + l.slice(1); }).join(' ');
             return { key, label };
         }
 
-        // Devuelve { key, label } con la colonia/localidad del domicilio, o null si no se puede deducir.
+        // Devuelve { key, label } con la colonia del domicilio, o null si no se puede deducir.
         function extractLocation(dom) {
             const raw = (dom || '').toString().normalize('NFC')
                 .replace(/c\.?\s*p\.?\s*:?\s*\d{4,5}/gi, ',').replace(/\b\d{5}\b/g, ',');
             const segs = raw.split(/[,;\n]+/).map(locWords).filter(w => w.length);
             // 1) Si escribieron "Col.", "Colonia", "Fracc.", "Barrio", "Agencia"… se toma lo que sigue.
             for (const w of segs) {
-                const i = w.findIndex(x => LOC_KW.has(x.n));
+                const i = w.findIndex(x => locIsKw(x.n));
                 if (i < 0) continue;
-                let rest = w.slice(i + 1);
-                if (w[i].n === 'unidad' && rest[0] && rest[0].n === 'habitacional') rest = rest.slice(1);
-                if (rest[0] && LOC_SMALL.has(rest[0].n) && rest[0].n === 'de') rest = rest.slice(1);
-                const r = locName(rest);
+                const r = locName(w.slice(i));
                 if (r) return r;
             }
             // 2) Si no, se usan las comas: el primer tramo que no sea calle/número es la colonia.
             const cands = [];
             segs.forEach((w, idx) => {
-                const streetLike = LOC_STREET.has(w[0].n) || w.some(x => /\d|#|s\/n/.test(x.n));
+                const streetLike = LOC_STREET.has(w[0].n) || w.some(x => /\d|#|s\/n/.test(x.n)) || w[w.length - 1].n === 'sn';
                 if (streetLike) return;
-                if (idx === 0 && segs.length === 1) return;
+                if (idx === 0 && segs.length === 1 && w.length > 4) return;
                 const r = locName(w);
                 if (r) cands.push(r);
             });
+            // La colonia tiene prioridad; el municipio solo cuenta si no escribieron colonia.
             return cands.find(c => c.key !== LOC_MUN) || cands[0] || null;
         }
 
         function computeLocationStats(students) {
             const groups = {}; const pend = []; const sinDom = [];
-            const add = (r, s) => { const g = groups[r.key] || (groups[r.key] = { key: r.key, labels: {}, count: 0 });
+            const add = (r) => { const g = groups[r.key] || (groups[r.key] = { key: r.key, labels: {}, count: 0 });
                 g.count++; g.labels[r.label] = (g.labels[r.label] || 0) + 1; };
             students.forEach(s => {
                 if (!(s.domicilio || '').toString().trim()) { sinDom.push(s); return; }
                 const r = extractLocation(s.domicilio);
-                if (r) add(r, s); else pend.push(s);
+                if (r) add(r); else pend.push(s);
             });
             // Segunda pasada: domicilios sin comas ni "Col." — se busca dentro del texto alguna
             // colonia que ya haya aparecido en otros alumnos (más las conocidas de la zona).
-            const seed = { 'esquipulas': 'Esquipulas', 'la paz': 'La Paz', [LOC_MUN]: 'Xoxocotlán' };
-            const known = Array.from(new Set(Object.keys(groups).concat(Object.keys(seed)))).sort((a, b) => b.length - a.length);
+            const known = {};
+            ['Esquipulas', 'La Paz', 'El Mirador'].forEach(n => { const r = locName(locWords(n)); known[locNorm(n)] = r; });
+            Object.values(groups).forEach(g => { if (g.key === LOC_MUN) return;
+                Object.keys(g.labels).forEach(l => { const n = locNorm(l); if (n.length >= 5) known[n] = { key: g.key, label: l }; }); });
+            const knownList = Object.keys(known).sort((a, b) => b.length - a.length);
             const noId = [];
             pend.forEach(s => {
                 const txt = ' ' + locWords(s.domicilio.toString().replace(/[,;\n]/g, ' ')).map(x => x.n).join(' ') + ' ';
-                const k = known.find(k => k !== LOC_MUN && txt.includes(' ' + k + ' ')) || (txt.includes(' ' + LOC_MUN + ' ') ? LOC_MUN : null);
-                if (k) add({ key: k, label: groups[k] ? Object.keys(groups[k].labels)[0] : seed[k] }, s); else noId.push(s);
+                const k = knownList.find(k => txt.includes(' ' + k + ' '));
+                if (k) add(known[k]); else if (txt.includes(' ' + LOC_MUN + ' ')) add({ key: LOC_MUN, label: LOC_MUN_LABEL }); else noId.push(s);
             });
-            const list = Object.values(groups).map(g => ({ key: g.key, count: g.count,
-                label: Object.keys(g.labels).sort((a, b) => g.labels[b] - g.labels[a])[0] }))
+            // Tercera pasada: errores de dedo. Un grupo chico cuyo nombre casi coincide con uno
+            // grande ("Esquipula", "Miradro") se suma al grande.
+            const arr = Object.values(groups).sort((a, b) => b.count - a.count);
+            const final = [];
+            arr.forEach(g => {
+                const ck = g.key.replace(/ /g, '');
+                const big = g.key === LOC_MUN ? null : final.find(f => { if (f.key === LOC_MUN) return false;
+                    const fk = f.key.replace(/ /g, ''); if (fk === ck) return true;
+                    const len = Math.min(fk.length, ck.length); const thr = len >= 9 ? 2 : len >= 5 ? 1 : 0;
+                    return thr > 0 && (g.count <= 2 || g.count * 5 <= f.count) && locDist(fk, ck) <= thr; });
+                if (big) { big.count += g.count; Object.keys(g.labels).forEach(l => big.labels[l] = (big.labels[l] || 0) + g.labels[l]); }
+                else final.push({ key: g.key, count: g.count, labels: Object.assign({}, g.labels), first: Object.keys(g.labels).sort((a, b) => g.labels[b] - g.labels[a] || b.length - a.length)[0] });
+            });
+            const list = final.map(g => ({ key: g.key, count: g.count, label: g.first,
+                variants: Object.keys(g.labels).filter(l => l !== g.first).map(l => ({ label: l, count: g.labels[l] })) }))
                 .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
             return { list, noId, sinDom, total: students.length };
+        }
+
+        // Colores de la gráfica de distribución (5 colonias principales + resto en gris).
+        const LOC_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4'];
+        const LOC_REST = '#B6BECB';
+        const locPct = (n, total) => total ? (n * 100 / total).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
+        function locSegments(st) {
+            const top = st.list.slice(0, 5).map((l, i) => ({ label: l.label, count: l.count, color: LOC_COLORS[i] }));
+            const rest = st.total - top.reduce((a, b) => a + b.count, 0);
+            if (rest > 0) top.push({ label: st.list.length > 5 ? 'Otras colonias y sin identificar' : 'Sin identificar', count: rest, color: LOC_REST });
+            return top;
+        }
+
+        // Arma el reporte (tarjetas, gráficas y tabla). Se usa igual en pantalla y al imprimir.
+        function locationReportHTML(st, forPrint) {
+            const { list, noId, sinDom, total } = st;
+            if (!total) return '<div style="color:#94A3B8; font-size:13px; padding:10px 4px;">Todavía no hay alumnos registrados.</div>';
+            const P = n => locPct(n, total);
+            const top = list[0];
+            const porRevisar = noId.length + sinDom.length;
+            const tile = (lbl, val, sub, small) => `<div style="flex:1 1 150px; min-width:140px; border:1px solid #E2E8F0; border-radius:12px; padding:12px 14px; background:#fff;">
+                    <div style="font-size:11px; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:.04em;">${lbl}</div>
+                    <div style="font-size:${small?19:24}px; font-weight:800; color:#0B2D6B; line-height:1.25; overflow-wrap:break-word;">${val}</div>
+                    <div style="font-size:11px; color:#64748B;">${sub}</div></div>`;
+            const tiles = `<div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px;">
+                ${tile('Alumnos', total, 'registrados en el sistema')}
+                ${tile('Colonias', list.length, 'de donde vienen los alumnos')}
+                ${top ? tile('Colonia con más alumnos', escH(top.label), `${top.count} alumno${top.count===1?'':'s'} · ${P(top.count)}`, true) : ''}
+                ${tile('Por revisar', porRevisar, 'sin domicilio o sin colonia clara')}
+            </div>`;
+            const segs = locSegments(st);
+            const dist = `<div style="margin-bottom:20px;">
+                <div style="font-size:13px; font-weight:700; color:#1E293B; margin-bottom:8px;">Distribución de los alumnos por colonia</div>
+                <div style="display:flex; gap:2px; height:30px; border-radius:6px; overflow:hidden;">
+                    ${segs.map(s => `<div class="loc-seg" title="${escH(s.label)}: ${s.count} (${P(s.count)})" style="flex:${s.count} 1 0; min-width:3px; background:${s.color};"></div>`).join('')}
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:10px;">
+                    ${segs.map(s => `<div style="display:flex; align-items:center; gap:6px; font-size:12px; color:#1E293B;"><span style="width:11px; height:11px; border-radius:3px; background:${s.color}; flex:none;"></span>${escH(s.label)} <strong>${P(s.count)}</strong></div>`).join('')}
+                </div>
+            </div>`;
+            const max = Math.max(1, ...list.map(l => l.count), noId.length, sinDom.length);
+            const row = (label, n, muted, sub) => `
+                <div class="loc-row" title="${escH(label)}: ${n} alumno${n===1?'':'s'} (${P(n)})" style="display:flex; align-items:center; gap:10px; padding:6px 4px; border-bottom:1px solid #EEF1F6; break-inside:avoid;">
+                    <div style="flex:0 0 32%; min-width:0; font-size:13px; font-weight:600; color:${muted?'#64748B':'#1E293B'}; overflow-wrap:anywhere;">${escH(label)}${sub?`<div style="font-size:10.5px; font-weight:400; color:#64748B;">${sub}</div>`:''}</div>
+                    <div style="flex:1 1 auto; min-width:40px; height:12px;">
+                        <div style="width:${Math.max(0.6, n * 100 / max).toFixed(1)}%; height:100%; background:${muted?'#B6BECB':'#0B2D6B'}; border-radius:0 4px 4px 0;"></div>
+                    </div>
+                    <div style="flex:0 0 42px; text-align:right; font-size:14px; font-weight:800; color:#1E293B;">${n}</div>
+                    <div style="flex:0 0 52px; text-align:right; font-size:13px; font-weight:600; color:#64748B;">${P(n)}</div>
+                </div>`;
+            let rows = list.map(l => row(l.label, l.count, false,
+                l.variants.length ? 'También capturado como: ' + l.variants.map(v => escH(v.label)).join(', ') : '')).join('');
+            if (noId.length) rows += row('Colonia no identificada', noId.length, true);
+            if (sinDom.length) rows += row('Sin domicilio registrado', sinDom.length, true);
+            const bars = `<div>
+                <div style="font-size:13px; font-weight:700; color:#1E293B; margin-bottom:4px;">Alumnos por colonia</div>
+                <div style="display:flex; gap:10px; padding:4px; font-size:10.5px; font-weight:600; color:#64748B; text-transform:uppercase; letter-spacing:.04em; border-bottom:1px solid #CBD5E1;">
+                    <div style="flex:0 0 32%;">Colonia</div><div style="flex:1 1 auto;"></div><div style="flex:0 0 42px; text-align:right;">Alumnos</div><div style="flex:0 0 52px; text-align:right;">%</div>
+                </div>
+                ${rows}
+                <div style="display:flex; gap:10px; padding:7px 4px; font-size:13px; font-weight:800; color:#0B2D6B;">
+                    <div style="flex:0 0 32%;">Total</div><div style="flex:1 1 auto;"></div><div style="flex:0 0 42px; text-align:right;">${total}</div><div style="flex:0 0 52px; text-align:right;">100%</div>
+                </div>
+            </div>`;
+            return tiles + dist + bars;
         }
 
         function renderLocationDashboard() {
             const el = document.getElementById('locationDashboard');
             if (!el) return;
             const wasOpen = !!(el.querySelector('details') && el.querySelector('details').open);
-            const { list, noId, sinDom, total } = computeLocationStats(S.students || []);
-            const pct = n => total ? (n * 100 / total).toFixed(1).replace(/\.0$/, '') + '%' : '0%';
-            const max = Math.max(1, ...list.map(l => l.count), noId.length, sinDom.length);
-            const row = (label, n, muted) => `
-                <div style="display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); flex-wrap:wrap;">
-                    <div style="flex:1 1 150px; min-width:130px; font-weight:700; color:${muted?'var(--text-2)':'var(--navy)'}; overflow-wrap:anywhere;">${escH(label)}</div>
-                    <div style="flex:3 1 160px; min-width:120px; height:10px; background:var(--bg); border-radius:6px; overflow:hidden;">
-                        <div style="width:${(n * 100 / max).toFixed(1)}%; height:100%; background:${muted?'var(--text-3)':'var(--navy)'}; border-radius:6px;"></div>
-                    </div>
-                    <div style="min-width:86px; text-align:right; font-size:12px; color:var(--text-2);"><span style="font-size:16px; font-weight:800; color:var(--navy);">${n}</span> alumno${n===1?'':'s'}</div>
-                    <div style="min-width:54px; text-align:right; font-size:15px; font-weight:800; color:var(--gold);">${pct(n)}</div>
-                </div>`;
-            let rows = list.map(l => row(l.label, l.count, false)).join('');
-            if (noId.length) rows += row('Colonia no identificada', noId.length, true);
-            if (sinDom.length) rows += row('Sin domicilio registrado', sinDom.length, true);
+            const st = computeLocationStats(S.students || []);
+            const noId = st.noId;
             const revisar = noId.length ? `
                 <details style="margin-top:10px;"${wasOpen?' open':''}>
                     <summary style="cursor:pointer; font-size:12px; font-weight:600; color:var(--navy);">Ver los ${noId.length} domicilio${noId.length===1?'':'s'} que no se pudieron identificar</summary>
@@ -2924,13 +3016,131 @@
                     </div>
                 </details>` : '';
             el.innerHTML = `
+                <style>.loc-row:hover{background:#F4F6FC}.loc-seg:hover{filter:brightness(1.08)}</style>
                 <div class="card">
-                    <div class="card-hdr"><div class="card-ttl"><span class="card-ttl-accent"></span>Ubicación de los alumnos</div></div>
-                    ${total ? `<div style="font-size:12px; color:var(--text-2); padding:0 4px 6px;">${total} alumno${total===1?'':'s'} en total · ${list.length} colonia${list.length===1?'':'s'} o localidad${list.length===1?'':'es'}</div>${rows}` : '<div style="color:var(--text-3); font-size:13px; padding:10px 4px;">Todavía no hay alumnos registrados.</div>'}
+                    <div class="card-hdr" style="flex-wrap:wrap; gap:8px;">
+                        <div class="card-ttl"><span class="card-ttl-accent"></span>Procedencia de los alumnos</div>
+                        ${st.total ? `<div style="display:flex; gap:8px; flex-wrap:wrap; margin-left:auto;">
+                            <button class="btn btn-out btn-sm" onclick="printLocationReport()">🖨️ Imprimir</button>
+                            <button class="btn btn-navy btn-sm" onclick="downloadLocationReport()">⬇️ Descargar PDF</button>
+                        </div>` : ''}
+                    </div>
+                    ${locationReportHTML(st, false)}
                     ${revisar}
-                    <div style="font-size:11px; color:var(--text-2); margin-top:10px;">La colonia se toma del campo Domicilio de cada alumno. Para que se cuente bien, escríbelo como "Calle, Número, Colonia" (por ejemplo: "Hidalgo 12, Col. La Paz"). El porcentaje es sobre el total de alumnos.</div>
+                    <div style="font-size:11px; color:var(--text-2); margin-top:12px;">La colonia se deduce del campo Domicilio de cada alumno y las variantes de captura se juntan en una sola. "${LOC_MUN_LABEL}" son los alumnos que solo escribieron el municipio (Santa Cruz Xoxocotlán), sin colonia. Si una colonia sale separada o mal agrupada, corrige el domicilio del alumno y se actualiza sola.</div>
                 </div>
             `;
+        }
+
+        function locReportMeta() {
+            const cfg = S.config || {};
+            const f = new Date();
+            return { escuela: cfg.nombre || 'Escuela', ciclo: cfg.ciclo || '',
+                fecha: f.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }),
+                archivo: 'reporte-procedencia-alumnos-' + f.getFullYear() + '-' + String(f.getMonth() + 1).padStart(2, '0') + '-' + String(f.getDate()).padStart(2, '0') };
+        }
+
+        // Abre el reporte en una ventana aparte, listo para imprimir.
+        function printLocationReport() {
+            const st = computeLocationStats(S.students || []);
+            const m = locReportMeta();
+            const w = window.open('', '_blank');
+            if (!w) { toast('El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes.', 'err'); return; }
+            w.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${escH(m.archivo)}</title>
+                <style>@page{size:letter;margin:14mm}*{box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+                body{font-family:'Segoe UI',Arial,Helvetica,sans-serif;color:#1E293B;margin:0;padding:18px;max-width:800px;margin:0 auto}
+                @media print{body{padding:0;max-width:none}}</style></head><body>
+                <div style="border-bottom:3px solid #0B2D6B; padding-bottom:8px; margin-bottom:16px;">
+                    <div style="font-size:18px; font-weight:800; color:#0B2D6B;">${escH(m.escuela)}</div>
+                    <div style="font-size:14px; font-weight:700;">Reporte de procedencia de los alumnos por colonia</div>
+                    <div style="font-size:11px; color:#64748B;">${m.ciclo ? 'Ciclo escolar ' + escH(m.ciclo) + ' · ' : ''}Generado el ${escH(m.fecha)}</div>
+                </div>
+                ${locationReportHTML(st, true)}
+                <div style="font-size:10px; color:#64748B; margin-top:14px;">"${LOC_MUN_LABEL}": alumnos que solo indicaron el municipio (Santa Cruz Xoxocotlán), sin colonia. Los porcentajes son sobre el total de alumnos.</div>
+                <script>setTimeout(function(){window.print()},400);<\/script></body></html>`);
+            w.document.close();
+        }
+
+        function loadJsPDF() {
+            if (window.jspdf && window.jspdf.jsPDF) return Promise.resolve(window.jspdf.jsPDF);
+            return new Promise((ok, fail) => { const sc = document.createElement('script');
+                sc.src = 'https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';
+                sc.onload = () => (window.jspdf && window.jspdf.jsPDF) ? ok(window.jspdf.jsPDF) : fail(new Error('jsPDF'));
+                sc.onerror = () => fail(new Error('jsPDF')); document.head.appendChild(sc); });
+        }
+
+        // Dibuja el mismo reporte en un PDF tamaño carta.
+        function buildLocationPDF(JsPDF, st, m) {
+            const doc = new JsPDF({ unit: 'mm', format: 'letter' });
+            const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 15, CW = W - M * 2;
+            const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+            const ink = h => doc.setTextColor(...hex(h)), fill = h => doc.setFillColor(...hex(h));
+            const font = (size, bold) => { doc.setFont('helvetica', bold ? 'bold' : 'normal'); doc.setFontSize(size); };
+            const P = n => locPct(n, st.total);
+            let y = M + 4;
+            font(15, true); ink('#0B2D6B'); doc.text(doc.splitTextToSize(m.escuela, CW)[0], M, y); y += 6.5;
+            font(11.5, true); ink('#1E293B'); doc.text('Reporte de procedencia de los alumnos por colonia', M, y); y += 5;
+            font(8.5, false); ink('#64748B'); doc.text((m.ciclo ? 'Ciclo escolar ' + m.ciclo + ' · ' : '') + 'Generado el ' + m.fecha, M, y); y += 3;
+            fill('#0B2D6B'); doc.rect(M, y, CW, 0.8, 'F'); y += 7;
+            // Tarjetas de resumen
+            const top = st.list[0];
+            const tiles = [['ALUMNOS', String(st.total), 'registrados en el sistema'], ['COLONIAS', String(st.list.length), 'de donde vienen'],
+                ['COLONIA CON MÁS ALUMNOS', top ? top.label : '—', top ? top.count + ' alumnos · ' + P(top.count) : ''],
+                ['POR REVISAR', String(st.noId.length + st.sinDom.length), 'sin domicilio o sin colonia clara']];
+            const tw = (CW - 9) / 4;
+            tiles.forEach((t, i) => { const x = M + i * (tw + 3);
+                doc.setDrawColor(...hex('#CBD5E1')); doc.setLineWidth(0.2); doc.roundedRect(x, y, tw, 19, 1.5, 1.5, 'S');
+                font(6, true); ink('#64748B'); doc.text(t[0], x + 2.5, y + 4.5);
+                let fs = 14; font(fs, true); while (fs > 7 && doc.getTextWidth(t[1]) > tw - 5) { fs -= 0.5; doc.setFontSize(fs); }
+                ink('#0B2D6B'); doc.text(doc.splitTextToSize(t[1], tw - 5)[0], x + 2.5, y + 11.5);
+                font(6.5, false); ink('#64748B'); doc.text(doc.splitTextToSize(t[2], tw - 5)[0], x + 2.5, y + 16); });
+            y += 27;
+            // Barra de distribución
+            font(10, true); ink('#1E293B'); doc.text('Distribución de los alumnos por colonia', M, y); y += 3;
+            const segs = locSegments(st); let x = M; const gap = 0.6, usable = CW - gap * (segs.length - 1);
+            segs.forEach(s => { const sw = usable * s.count / st.total; fill(s.color); doc.rect(x, y, Math.max(sw, 0.5), 8, 'F'); x += sw + gap; });
+            y += 13; x = M; font(8, false);
+            segs.forEach(s => { const txt = s.label + '  ' + P(s.count); const need = 5 + doc.getTextWidth(txt) + 6;
+                if (x + need > M + CW + 6 && x > M) { x = M; y += 5; }
+                fill(s.color); doc.roundedRect(x, y - 2.6, 3, 3, 0.6, 0.6, 'F'); ink('#1E293B'); doc.text(txt, x + 4.3, y); x += need; });
+            y += 10;
+            // Barras por colonia (hace de tabla)
+            const cName = CW * 0.34, cNum = 16, cPct = 16, bx = M + cName + 2, bw = CW - cName - 2 - cNum - cPct;
+            const head = () => { font(10, true); ink('#1E293B'); doc.text('Alumnos por colonia', M, y); y += 6;
+                font(6.5, true); ink('#64748B'); doc.text('COLONIA', M, y); doc.text('ALUMNOS', M + CW - cPct, y, { align: 'right' }); doc.text('%', M + CW, y, { align: 'right' });
+                y += 1.5; fill('#CBD5E1'); doc.rect(M, y, CW, 0.25, 'F'); y += 1; };
+            head();
+            const max = Math.max(1, ...st.list.map(l => l.count), st.noId.length, st.sinDom.length);
+            const rows = st.list.map(l => ({ label: l.label, n: l.count, sub: l.variants.length ? 'También capturado como: ' + l.variants.map(v => v.label).join(', ') : '' }));
+            if (st.noId.length) rows.push({ label: 'Colonia no identificada', n: st.noId.length, muted: true });
+            if (st.sinDom.length) rows.push({ label: 'Sin domicilio registrado', n: st.sinDom.length, muted: true });
+            rows.forEach(r => {
+                font(9, true); const nameLines = doc.splitTextToSize(r.label, cName);
+                font(6.5, false); const subLines = r.sub ? doc.splitTextToSize(r.sub, cName) : [];
+                const rh = Math.max(7, nameLines.length * 4 + subLines.length * 2.8 + 3);
+                if (y + rh > H - M - 8) { doc.addPage(); y = M + 4; head(); }
+                font(9, true); ink(r.muted ? '#64748B' : '#1E293B'); doc.text(nameLines, M, y + 4.6);
+                if (subLines.length) { font(6.5, false); ink('#64748B'); doc.text(subLines, M, y + 4.6 + nameLines.length * 4 - 0.6); }
+                fill(r.muted ? '#B6BECB' : '#0B2D6B'); doc.roundedRect(bx, y + 1.6, Math.max(0.8, bw * r.n / max), 3.8, 0.8, 0.8, 'F');
+                font(9.5, true); ink('#1E293B'); doc.text(String(r.n), M + CW - cPct, y + 4.6, { align: 'right' });
+                font(9, false); ink('#64748B'); doc.text(P(r.n), M + CW, y + 4.6, { align: 'right' });
+                y += rh; fill('#EEF1F6'); doc.rect(M, y - 0.4, CW, 0.2, 'F');
+            });
+            y += 1; font(9.5, true); ink('#0B2D6B'); doc.text('Total', M, y + 4.6); doc.text(String(st.total), M + CW - cPct, y + 4.6, { align: 'right' }); doc.text('100%', M + CW, y + 4.6, { align: 'right' });
+            y += 12; if (y > H - M - 12) { doc.addPage(); y = M + 6; }
+            font(7, false); ink('#64748B');
+            doc.text(doc.splitTextToSize('"' + LOC_MUN_LABEL + '": alumnos que solo indicaron el municipio (Santa Cruz Xoxocotlán), sin colonia. Los porcentajes son sobre el total de alumnos.', CW), M, y);
+            const pages = doc.getNumberOfPages();
+            for (let i = 1; i <= pages; i++) { doc.setPage(i); font(7, false); ink('#94A3B8'); doc.text('Página ' + i + ' de ' + pages, M + CW, H - 8, { align: 'right' }); doc.text('Sistema de Credenciales Escolares', M, H - 8); }
+            return doc;
+        }
+
+        function downloadLocationReport() {
+            const st = computeLocationStats(S.students || []);
+            const m = locReportMeta();
+            toast('Generando PDF…');
+            loadJsPDF().then(JsPDF => { buildLocationPDF(JsPDF, st, m).save(m.archivo + '.pdf'); toast('Reporte descargado'); })
+                .catch(() => { toast('No se pudo generar el PDF (revisa tu internet). Se abre la impresión: elige "Guardar como PDF".', 'err'); printLocationReport(); });
         }
 
         // Actualiza solo los resultados de búsqueda y la vista previa, SIN reconstruir la página
